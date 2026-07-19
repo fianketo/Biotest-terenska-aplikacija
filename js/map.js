@@ -5,6 +5,7 @@ let map = null;
 let markersLayer = null;
 let routeLayer = null;
 let currentLocationMarker = null;
+let homeMarker = null;
 
 const DEFAULT_CENTER = [44.7866, 20.4489]; // Belgrade
 const DEFAULT_ZOOM = 12;
@@ -59,6 +60,37 @@ export function showCurrentLocationMarker(lat, lng) {
   currentLocationMarker = window.L.marker([lat, lng], { icon: pinIcon('#12b3c4') })
     .bindPopup('📡 Moja trenutna lokacija')
     .addTo(map);
+}
+
+export function clearCurrentLocationMarker() {
+  if (currentLocationMarker) {
+    currentLocationMarker.remove();
+    currentLocationMarker = null;
+  }
+}
+
+function homeIcon() {
+  return window.L.divIcon({
+    className: 'home-pin',
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid #7c4dff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.35)">🏠</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+}
+
+export function showHomeMarker(lat, lng, address) {
+  if (!map) return;
+  if (homeMarker) homeMarker.remove();
+  homeMarker = window.L.marker([lat, lng], { icon: homeIcon(), zIndexOffset: 1000 })
+    .bindPopup(`🏠 ${escapeHtmlLite(address || 'Moja adresa')}`)
+    .addTo(map);
+}
+
+export function clearHomeMarker() {
+  if (homeMarker) {
+    homeMarker.remove();
+    homeMarker = null;
+  }
 }
 
 export function drawRoute(geometryCoords, { dashed = false } = {}) {

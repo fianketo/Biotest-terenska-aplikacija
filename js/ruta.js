@@ -7,7 +7,7 @@ import { toast, formatDistance, formatDuration, escapeHtml } from './ui.js';
 import * as mapMod from './map.js';
 import { computeOptimizedTrip } from './route.js';
 
-let startMode = 'current';
+let startMode = 'custom';
 let mapReady = false;
 let routeStale = false;
 
@@ -112,10 +112,22 @@ function drawRouteOnMap(route) {
       if (loc) mapMod.flyTo(loc.lat, loc.lng);
     }
   });
-  if (route && route.startCoord) {
+
+  const home = getItem(KEYS.startLocation, null);
+  if (home && home.lat != null && home.lng != null) {
+    mapMod.showHomeMarker(home.lat, home.lng, home.address);
+    bounds.push([home.lat, home.lng]);
+  } else {
+    mapMod.clearHomeMarker();
+  }
+
+  if (route && route.startCoord && route.startMode === 'current') {
     mapMod.showCurrentLocationMarker(route.startCoord.lat, route.startCoord.lng);
     bounds.push([route.startCoord.lat, route.startCoord.lng]);
+  } else {
+    mapMod.clearCurrentLocationMarker();
   }
+
   if (route) {
     mapMod.drawRoute(route.geometryCoords, { dashed: route.source === 'fallback-nn' });
   } else {
@@ -241,6 +253,9 @@ export function initRutaView() {
   const customStatusEl = document.getElementById('customStartStatus');
   const saveCustomStartBtn = document.getElementById('saveCustomStartBtn');
   const editCustomStartBtn = document.getElementById('editCustomStartBtn');
+
+  customEditor.hidden = startMode !== 'custom';
+  if (startMode === 'custom') renderCustomStartEditor();
 
   segmented.addEventListener('click', (e) => {
     const btn = e.target.closest('.segmented-btn');
