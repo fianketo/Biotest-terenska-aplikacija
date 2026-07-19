@@ -2,12 +2,13 @@
 // theme toggling, and formatters used across cenovnik/cart/locations/route.
 import { KEYS, getItem, setItem } from './storage.js';
 
-const VIEWS = ['cenovnik', 'korpa', 'lokacije', 'ruta'];
+const VIEWS = ['cenovnik', 'korpa', 'lokacije', 'ruta', 'podesavanja'];
 const VIEW_SUBTITLES = {
   cenovnik: 'Cenovnik analiza',
   korpa: 'Vaša korpa',
   lokacije: 'Terenske lokacije',
-  ruta: 'Optimizacija rute'
+  ruta: 'Optimizacija rute',
+  podesavanja: 'Upravljanje cenovnikom'
 };
 const viewChangeListeners = [];
 

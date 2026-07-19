@@ -1,8 +1,7 @@
 // Cenovnik: search/filter over the flattened test index + a shared card-list
 // renderer reused by cart.js and by locations.js's test-picker sheet.
-import { testIndex, normalizeForSearch, cart, on } from './state.js';
+import { testIndex, normalizeForSearch, cart, on, getCenovnikCategories } from './state.js';
 import { formatPrice, debounce, escapeHtml } from './ui.js';
-import { CENOVNIK } from './data.js';
 
 const BATCH_SIZE = 60;
 
@@ -23,7 +22,7 @@ export function filterTests({ query = '', category = '', min = null, max = null 
 export function populateCategorySelect(selectEl) {
   const current = selectEl.value;
   const options = ['<option value="">Sve kategorije</option>']
-    .concat(CENOVNIK.categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`));
+    .concat(getCenovnikCategories().map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`));
   selectEl.innerHTML = options.join('');
   if (current) selectEl.value = current;
 }
@@ -42,6 +41,8 @@ function testCardHtml(test, { mode, selected }) {
     actionHtml = `<button type="button" class="remove-btn" data-action="remove-cart" data-id="${test.id}">✕ Ukloni</button>`;
   } else if (mode === 'picker') {
     actionHtml = `<button type="button" class="add-btn ${selected ? 'in-cart' : ''}" data-action="toggle-picker" data-id="${test.id}">${selected ? '✓ Odabrano' : '➕ Dodaj'}</button>`;
+  } else if (mode === 'manage') {
+    actionHtml = `<button type="button" class="chip-btn" data-action="edit-test" data-id="${test.id}">✎ Uredi</button>`;
   }
 
   return `
@@ -200,6 +201,11 @@ export function initCenovnikView() {
       btn.classList.toggle('in-cart', inCart);
       btn.textContent = inCart ? '✓ U korpi' : '➕ Dodaj';
     });
+  });
+
+  on('cenovnik:changed', () => {
+    populateCategorySelect(categorySelect);
+    render();
   });
 
   render();

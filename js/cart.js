@@ -63,5 +63,6 @@ export function initCartView() {
   });
 
   on('cart:changed', render);
+  on('cenovnik:changed', render); // price edits/deletions in Settings should reflect in the cart total immediately
   render();
 }

@@ -109,6 +109,27 @@
     <div id="itineraryList" class="card-list"></div>
   </section>
 
+  <section id="view-podesavanja" class="view" data-view="podesavanja" hidden>
+    <div class="search-panel">
+      <div class="field">
+        <label for="settingsSearchInput">🔍 Pretraga</label>
+        <input type="text" id="settingsSearchInput" placeholder="Naziv, kategorija..." autocomplete="off">
+      </div>
+      <div class="filter-row">
+        <div class="field">
+          <label for="settingsCategoryFilter">📂 Kategorija</label>
+          <select id="settingsCategoryFilter"><option value="">Sve kategorije</option></select>
+        </div>
+      </div>
+      <div class="stats-row">
+        <span id="settingsResultCount"></span>
+        <button type="button" id="resetCenovnikBtn" class="chip-btn">↺ Vrati na fabričke vrednosti</button>
+      </div>
+    </div>
+    <div id="settingsList" class="card-list"></div>
+    <button type="button" id="addTestBtn" class="fab" aria-label="Dodaj analizu">+</button>
+  </section>
+
 </main>
 
 <nav class="bottom-nav">
@@ -123,6 +144,9 @@
   </button>
   <button type="button" class="nav-btn" data-view="ruta">
     <span class="nav-icon">🧭</span><span>Ruta</span>
+  </button>
+  <button type="button" class="nav-btn" data-view="podesavanja">
+    <span class="nav-icon">⚙️</span><span>Podešavanja</span>
   </button>
 </nav>
 

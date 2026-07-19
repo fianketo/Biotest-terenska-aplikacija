@@ -1,5 +1,6 @@
-// In-memory app state: flattened test index (built once from CENOVNIK),
-// cart, locations — plus a tiny pub/sub bus so modules react to each other
+// In-memory app state: editable test index (seeded once from data.js, then
+// lives in localStorage so Settings can add/edit/delete tests), cart,
+// locations — plus a tiny pub/sub bus so modules react to each other
 // without a framework.
 import { CENOVNIK } from './data.js';
 import { KEYS, getItem, setItem } from './storage.js';
@@ -16,11 +17,13 @@ export function emit(event, payload) {
   (listeners.get(event) || []).forEach((fn) => fn(payload));
 }
 
-// ---------- Test index (slug IDs) ----------
-// `prefix` is null for 68/897 tests and not unique — cannot serve as an ID.
-// (categoryName, testName) pairs are unique across the whole dataset, so the
-// ID is derived from those two fields, stable across future data.js edits
-// that add/remove unrelated tests.
+// ---------- Test index (editable, stable IDs) ----------
+// `prefix` is null for many tests and not unique — cannot serve as an ID.
+// IDs are derived from (categoryName, testName) *once*, the first time a
+// test is seeded/created, then stored as a permanent, opaque field —
+// renaming a test or its category afterward never changes its id, so
+// existing cart items / saved locations' testIds[] / saved patients'
+// testIds[] never get silently orphaned by an edit.
 function slugify(str) {
   return str
     .normalize('NFD')
@@ -30,23 +33,135 @@ function slugify(str) {
     .replace(/^_+|_+$/g, '');
 }
 
-function buildTestIndex() {
-  const index = [];
-  const seenIds = new Map();
-  for (const category of CENOVNIK.categories) {
-    for (const test of category.tests) {
-      let id = `${slugify(category.name)}__${slugify(test.name)}`;
-      const count = (seenIds.get(id) || 0) + 1;
-      seenIds.set(id, count);
-      if (count > 1) id = `${id}__${count}`;
-      index.push({ id, category: category.name, ...test });
-    }
+function generateUniqueTestId(category, name, existingIds) {
+  const base = `${slugify(category)}__${slugify(name)}`;
+  let candidate = base;
+  let suffix = 1;
+  while (existingIds.has(candidate)) {
+    suffix += 1;
+    candidate = `${base}__${suffix}`;
   }
-  return index;
+  return candidate;
 }
 
-export const testIndex = buildTestIndex();
-export const testById = new Map(testIndex.map((t) => [t.id, t]));
+/** Flattens the static factory data.js CENOVNIK into the flat {id, category, ...fields}[] shape used everywhere else, assigning fresh stable ids. */
+function flattenDefaultCenovnik() {
+  const existingIds = new Set();
+  const flat = [];
+  for (const category of CENOVNIK.categories) {
+    for (const test of category.tests) {
+      const id = generateUniqueTestId(category.name, test.name, existingIds);
+      existingIds.add(id);
+      flat.push({ id, category: category.name, ...test });
+    }
+  }
+  return flat;
+}
+
+function seedCenovnikIfNeeded() {
+  if (getItem(KEYS.cenovnik, null) !== null) return;
+  setItem(KEYS.cenovnik, flattenDefaultCenovnik());
+}
+
+export const testIndex = [];
+export const testById = new Map();
+
+function syncTestById() {
+  testById.clear();
+  testIndex.forEach((t) => testById.set(t.id, t));
+}
+
+function rebuildTestIndex() {
+  const stored = getItem(KEYS.cenovnik, []);
+  testIndex.length = 0;
+  testIndex.push(...stored);
+  syncTestById();
+}
+
+function persistCenovnik() {
+  setItem(KEYS.cenovnik, testIndex);
+  syncTestById();
+  pruneCartOfMissingTests(); // a deleted test can't be left as a phantom entry in someone's cart
+  emit('cenovnik:changed');
+}
+
+function pruneCartOfMissingTests() {
+  let changed = false;
+  for (const id of cart) {
+    if (!testById.has(id)) {
+      cart.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) persistCart();
+}
+
+seedCenovnikIfNeeded();
+rebuildTestIndex();
+
+export function getCenovnikCategories() {
+  return [...new Set(testIndex.map((t) => t.category))].sort((a, b) => a.localeCompare(b, 'sr'));
+}
+
+export function addTest(fields) {
+  const category = (fields.category || '').trim();
+  const name = (fields.name || '').trim();
+  const price = Number(fields.price);
+  if (!category || !name || !Number.isFinite(price) || price < 0) return null;
+
+  const existingIds = new Set(testIndex.map((t) => t.id));
+  const test = {
+    id: generateUniqueTestId(category, name, existingIds),
+    category,
+    name,
+    prefix: fields.prefix || null,
+    sample: fields.sample || null,
+    method: fields.method || null,
+    instrument: fields.instrument || null,
+    time: fields.time || null,
+    price
+  };
+  testIndex.push(test);
+  persistCenovnik();
+  return test;
+}
+
+export function updateTest(id, fields) {
+  const test = testById.get(id);
+  if (!test) return null;
+
+  const category = (fields.category || '').trim();
+  const name = (fields.name || '').trim();
+  const price = Number(fields.price);
+  if (!category || !name || !Number.isFinite(price) || price < 0) return null;
+
+  test.category = category;
+  test.name = name;
+  test.prefix = fields.prefix || null;
+  test.sample = fields.sample || null;
+  test.method = fields.method || null;
+  test.instrument = fields.instrument || null;
+  test.time = fields.time || null;
+  test.price = price;
+  persistCenovnik();
+  return test;
+}
+
+export function deleteTest(id) {
+  const idx = testIndex.findIndex((t) => t.id === id);
+  if (idx === -1) return false;
+  testIndex.splice(idx, 1);
+  persistCenovnik();
+  return true;
+}
+
+/** Wipes all add/edit/delete changes and restores the original factory price list. Destructive — callers should confirm with the user first. */
+export function resetCenovnikToDefaults() {
+  const fresh = flattenDefaultCenovnik();
+  testIndex.length = 0;
+  testIndex.push(...fresh);
+  persistCenovnik();
+}
 
 export function normalizeForSearch(str) {
   return (str || '')

@@ -23,6 +23,7 @@ const SHELL_ASSETS = [
   './js/route.js',
   './js/map.js',
   './js/ruta.js',
+  './js/settings.js',
   './vendor/leaflet/leaflet.js',
   './vendor/leaflet/leaflet.css',
   './vendor/leaflet/images/marker-icon.png',

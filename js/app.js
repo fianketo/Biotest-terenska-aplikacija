@@ -6,6 +6,7 @@ import { initCenovnikView } from './cenovnik.js';
 import { initCartView, updateCartBadge } from './cart.js';
 import { initLokacijeView } from './locations.js';
 import { initRutaView, onRutaViewShown } from './ruta.js';
+import { initSettingsView } from './settings.js';
 
 runMigrations();
 initTheme();
@@ -15,6 +16,7 @@ initCenovnikView();
 initCartView();
 initLokacijeView();
 initRutaView();
+initSettingsView();
 
 // Registered before initNav() so a reload landing directly on #/ruta still
 // triggers the map's lazy init (renderView fires listeners synchronously).

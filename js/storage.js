@@ -10,7 +10,8 @@ export const KEYS = {
   geocodeCache: `${PREFIX}geocodeCache`,
   lastRoute: `${PREFIX}lastRoute`,
   patients: `${PREFIX}patients`,
-  startLocation: `${PREFIX}startLocation`
+  startLocation: `${PREFIX}startLocation`,
+  cenovnik: `${PREFIX}cenovnik`
 };
 
 export function getItem(key, fallback) {
