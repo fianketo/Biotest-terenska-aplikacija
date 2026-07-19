@@ -42,7 +42,7 @@ export function renderLocationMarkers(locations, { onMarkerClick } = {}) {
 
   for (const loc of locations) {
     if (loc.lat == null || loc.lng == null) continue;
-    const color = loc.visited ? '#1a8f5e' : '#0e7c8c';
+    const color = loc.visited ? '#1a8f5e' : '#c94444';
     const marker = window.L.marker([loc.lat, loc.lng], { icon: pinIcon(color) })
       .bindPopup(`<strong>${escapeHtmlLite(loc.name)}</strong><br>${escapeHtmlLite(loc.address)}`);
     if (onMarkerClick) marker.on('click', () => onMarkerClick(loc.id));

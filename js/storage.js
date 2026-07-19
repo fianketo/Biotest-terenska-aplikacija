@@ -8,7 +8,9 @@ export const KEYS = {
   cart: `${PREFIX}cart`,
   locations: `${PREFIX}locations`,
   geocodeCache: `${PREFIX}geocodeCache`,
-  lastRoute: `${PREFIX}lastRoute`
+  lastRoute: `${PREFIX}lastRoute`,
+  patients: `${PREFIX}patients`,
+  startLocation: `${PREFIX}startLocation`
 };
 
 export function getItem(key, fallback) {

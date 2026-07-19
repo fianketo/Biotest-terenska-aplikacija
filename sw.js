@@ -18,6 +18,7 @@ const SHELL_ASSETS = [
   './js/cenovnik.js',
   './js/cart.js',
   './js/locations.js',
+  './js/patients.js',
   './js/geocode.js',
   './js/route.js',
   './js/map.js',

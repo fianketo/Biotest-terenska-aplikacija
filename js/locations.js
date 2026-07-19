@@ -1,8 +1,10 @@
-// Lokacije CRUD: list view + add/edit bottom-sheet form (name, address +
-// geocode, note, test picker, manual lat/lng fallback).
+// Lokacije CRUD: list view + add/edit bottom-sheet form (name, phone,
+// address + geocode, note, test picker, manual lat/lng fallback, and a
+// patient-memory picker to reuse a previously entered patient/client).
 import { locations, setLocations, on } from './state.js';
 import { openBottomSheet, closeBottomSheet, toast, escapeHtml } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
+import { mountPatientPicker, upsertPatientFromLocation } from './patients.js';
 
 function genId() {
   return `loc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -37,6 +39,7 @@ function locationCardHtml(loc) {
       ${pill}
     </div>
     <div class="location-address">📍 ${escapeHtml(loc.address)}</div>
+    ${loc.phone ? `<div class="location-phone">📞 <a href="tel:${escapeHtml(loc.phone.replace(/[^0-9+]/g, ''))}">${escapeHtml(loc.phone)}</a></div>` : ''}
     ${loc.note ? `<div class="location-note">"${escapeHtml(loc.note)}"</div>` : ''}
     ${testCount ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span></div>` : ''}
     <div class="location-menu-row">
@@ -64,14 +67,19 @@ function openLocationForm(existing) {
   const isEdit = !!existing;
   const working = existing
     ? { ...existing, testIds: [...(existing.testIds || [])] }
-    : { id: genId(), name: '', address: '', lat: null, lng: null, geocodedAt: null, note: '', testIds: [], visited: false, visitedAt: null };
+    : { id: genId(), name: '', phone: '', address: '', lat: null, lng: null, geocodedAt: null, note: '', testIds: [], visited: false, visitedAt: null };
   const pickerSelection = new Set(working.testIds);
 
   const form = document.createElement('form');
   form.innerHTML = `
+    <button type="button" class="chip-btn" id="openPatientPickerBtn">👤 Izaberi postojećeg pacijenta</button>
     <div class="field">
       <label for="locName">Naziv / klijent *</label>
       <input type="text" id="locName" required value="${escapeHtml(working.name)}" placeholder="npr. Apoteka Zdravlje, Novi Sad">
+    </div>
+    <div class="field">
+      <label for="locPhone">Telefon</label>
+      <input type="tel" id="locPhone" value="${escapeHtml(working.phone)}" placeholder="npr. 06X/XXX-XXXX">
     </div>
     <div class="field">
       <label for="locAddress">Adresa *</label>
@@ -154,6 +162,38 @@ function openLocationForm(existing) {
     }
   });
 
+  form.querySelector('#openPatientPickerBtn').addEventListener('click', () => {
+    const pickerContainer = document.createElement('div');
+    mountPatientPicker(pickerContainer, {
+      onSelect: (patient) => {
+        form.querySelector('#locName').value = patient.name || '';
+        form.querySelector('#locPhone').value = patient.phone || '';
+        form.querySelector('#locAddress').value = patient.address || '';
+
+        pickerSelection.clear();
+        (patient.testIds || []).forEach((id) => pickerSelection.add(id));
+        form.querySelector('#testPickerCount').textContent = `${pickerSelection.size} odabrano`;
+
+        if (patient.lat != null && patient.lng != null) {
+          working.lat = patient.lat;
+          working.lng = patient.lng;
+          working.geocodedAt = patient.geocodedAt;
+          form.querySelector('#locLat').value = patient.lat;
+          form.querySelector('#locLng').value = patient.lng;
+          geocodeStatusEl.textContent = `✔ Koordinate iz memorije (${patient.lat.toFixed(5)}, ${patient.lng.toFixed(5)})`;
+          geocodeStatusEl.className = 'geocode-status ok';
+        } else {
+          geocodeStatusEl.textContent = '';
+          geocodeStatusEl.className = 'geocode-status';
+        }
+
+        closeBottomSheet();
+        toast(`Popunjeno iz memorije: ${patient.name}`);
+      }
+    });
+    openBottomSheet(pickerContainer, { title: 'Izaberi postojećeg pacijenta' });
+  });
+
   form.querySelector('#openTestPickerBtn').addEventListener('click', () => {
     const pickerContainer = document.createElement('div');
     mountTestPicker(pickerContainer, pickerSelection);
@@ -188,15 +228,18 @@ function openLocationForm(existing) {
     }
 
     const now = new Date().toISOString();
-    upsertLocation({
+    const saved = {
       ...working,
       name,
+      phone: form.querySelector('#locPhone').value.trim(),
       address,
       note: form.querySelector('#locNote').value.trim(),
       testIds: [...pickerSelection],
       createdAt: working.createdAt || now,
       updatedAt: now
-    });
+    };
+    upsertLocation(saved);
+    upsertPatientFromLocation(saved);
     toast(isEdit ? 'Lokacija sačuvana' : 'Lokacija dodata');
     closeBottomSheet();
   });

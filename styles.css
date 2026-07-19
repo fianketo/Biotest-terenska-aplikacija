@@ -305,6 +305,9 @@ input:focus, select:focus, textarea:focus {
 .location-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .location-name { font-weight: 700; font-size: 0.95rem; }
 .location-address { font-size: 0.8rem; color: var(--text-muted); }
+.location-phone { font-size: 0.8rem; }
+.location-phone a { color: var(--primary-dark); font-weight: 600; text-decoration: none; }
+:root[data-theme="dark"] .location-phone a { color: var(--accent); }
 .location-note { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
 .location-menu-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .status-pill { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 30px; white-space: nowrap; }
@@ -359,6 +362,12 @@ input:focus, select:focus, textarea:focus {
 }
 .segmented-btn.active { background: var(--bg-elevated); color: var(--primary-dark); box-shadow: var(--shadow); }
 :root[data-theme="dark"] .segmented-btn.active { color: var(--accent); }
+
+.custom-start-editor { margin-top: 2px; }
+.custom-start-editor .geocode-row { align-items: center; }
+
+.patient-card { cursor: pointer; transition: transform 0.15s, background 0.2s; }
+.patient-card:active { transform: scale(0.98); background: var(--bg-sunken); }
 
 .route-banner {
   margin: 10px 18px 0;

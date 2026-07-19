@@ -23,6 +23,21 @@ function locationMap() {
   return new Map(locations.map((l) => [l.id, l]));
 }
 
+function renderCustomStartEditor() {
+  const savedRow = document.getElementById('customStartSaved');
+  const savedLabel = document.getElementById('customStartSavedLabel');
+  const formRow = document.getElementById('customStartForm');
+  const saved = getItem(KEYS.startLocation, null);
+  if (saved && saved.lat != null && saved.lng != null) {
+    savedRow.hidden = false;
+    savedLabel.textContent = `🏠 ${saved.address}`;
+    formRow.hidden = true;
+  } else {
+    savedRow.hidden = true;
+    formRow.hidden = false;
+  }
+}
+
 function setBanner(message, tone = 'warning') {
   const el = document.getElementById('routeBanner');
   if (!message) {
@@ -118,7 +133,7 @@ function renderAll() {
     setBanner(null);
     return;
   }
-  const startLabel = route.startMode === 'current' ? '📡 Moja trenutna lokacija (u trenutku optimizacije)' : null;
+  const startLabel = route.startLabel || (route.startMode === 'current' ? '📡 Moja trenutna lokacija (u trenutku optimizacije)' : null);
   renderSummary(route, route.stopIds.length);
   renderItinerary(route, startLabel);
 
@@ -150,6 +165,16 @@ async function handleOptimize(button) {
       toast('Nije moguće dobiti trenutnu lokaciju — proverite dozvole za lokaciju.');
       return;
     }
+  } else if (startMode === 'custom') {
+    const saved = getItem(KEYS.startLocation, null);
+    if (!saved || saved.lat == null || saved.lng == null) {
+      toast('Prvo unesite i sačuvajte svoju početnu adresu.');
+      return;
+    }
+    start = { lat: saved.lat, lng: saved.lng };
+    startCoord = start;
+    startLabel = `🏠 ${saved.address}`;
+    stops = eligible;
   } else {
     if (!eligible.length) {
       toast('Nema lokacija za optimizaciju rute.');
@@ -211,12 +236,58 @@ export function initRutaView() {
   const segmented = document.getElementById('startModeSegmented');
   const optimizeBtn = document.getElementById('optimizeRouteBtn');
   const itineraryList = document.getElementById('itineraryList');
+  const customEditor = document.getElementById('customStartEditor');
+  const customAddressInput = document.getElementById('customStartAddress');
+  const customStatusEl = document.getElementById('customStartStatus');
+  const saveCustomStartBtn = document.getElementById('saveCustomStartBtn');
+  const editCustomStartBtn = document.getElementById('editCustomStartBtn');
 
   segmented.addEventListener('click', (e) => {
     const btn = e.target.closest('.segmented-btn');
     if (!btn) return;
     startMode = btn.dataset.mode;
     segmented.querySelectorAll('.segmented-btn').forEach((b) => b.classList.toggle('active', b === btn));
+    customEditor.hidden = startMode !== 'custom';
+    if (startMode === 'custom') renderCustomStartEditor();
+  });
+
+  editCustomStartBtn.addEventListener('click', () => {
+    const saved = getItem(KEYS.startLocation, null);
+    customAddressInput.value = saved ? saved.address : '';
+    document.getElementById('customStartSaved').hidden = true;
+    document.getElementById('customStartForm').hidden = false;
+    customStatusEl.textContent = '';
+    customStatusEl.className = 'geocode-status';
+  });
+
+  saveCustomStartBtn.addEventListener('click', async () => {
+    const address = customAddressInput.value.trim();
+    if (!address) {
+      toast('Unesite adresu');
+      return;
+    }
+    saveCustomStartBtn.disabled = true;
+    saveCustomStartBtn.textContent = '⏳ Tražim...';
+    customStatusEl.textContent = '';
+    customStatusEl.className = 'geocode-status';
+    try {
+      const { geocodeAddress } = await import('./geocode.js');
+      const result = await geocodeAddress(address);
+      if (result) {
+        setItem(KEYS.startLocation, { address, lat: result.lat, lng: result.lng, geocodedAt: new Date().toISOString() });
+        toast('Početna adresa sačuvana');
+        renderCustomStartEditor();
+      } else {
+        customStatusEl.textContent = '✖ Adresa nije pronađena — proverite adresu.';
+        customStatusEl.classList.add('error');
+      }
+    } catch {
+      customStatusEl.textContent = '✖ Greška pri pretrazi (proverite internet konekciju).';
+      customStatusEl.classList.add('error');
+    } finally {
+      saveCustomStartBtn.disabled = false;
+      saveCustomStartBtn.textContent = '📡 Pronađi i sačuvaj';
+    }
   });
 
   optimizeBtn.addEventListener('click', () => handleOptimize(optimizeBtn));
