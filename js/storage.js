@@ -43,3 +43,27 @@ export function runMigrations() {
     setItem(KEYS.schemaVersion, SCHEMA_VERSION);
   }
 }
+
+// ---------- Backup (export/import) ----------
+// Durable user data only — bta:geocodeCache (pure perf cache) and
+// bta:lastRoute (recomputed on demand) are deliberately excluded.
+const BACKUP_KEYS = ['theme', 'cart', 'locations', 'patients', 'startLocation', 'cenovnik'];
+
+export function buildBackupPayload() {
+  const data = {};
+  for (const name of BACKUP_KEYS) {
+    data[name] = getItem(KEYS[name], null);
+  }
+  return { app: 'biotest-teren', exportedAt: new Date().toISOString(), data };
+}
+
+/** Validates and writes a previously exported payload back into storage. Returns true on success, false if the payload doesn't look like a valid backup (nothing is written in that case). */
+export function applyBackupPayload(payload) {
+  if (!payload || typeof payload !== 'object' || !payload.data || typeof payload.data !== 'object') return false;
+  for (const name of BACKUP_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(payload.data, name)) {
+      setItem(KEYS[name], payload.data[name]);
+    }
+  }
+  return true;
+}

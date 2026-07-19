@@ -194,6 +194,15 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
 }
 
+.backup-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chip-btn {
   background: var(--bg-sunken);
   border: 1px solid var(--border);

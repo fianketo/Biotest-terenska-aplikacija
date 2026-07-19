@@ -73,6 +73,16 @@
       <h2>📍 Lista pacijenata</h2>
       <span id="locationsCount" class="muted-count"></span>
     </div>
+    <div class="search-panel">
+      <div class="field">
+        <label for="locationsSearchInput">🔍 Pretraga</label>
+        <input type="text" id="locationsSearchInput" placeholder="Ime, adresa, telefon..." autocomplete="off">
+      </div>
+      <div class="stats-row">
+        <span></span>
+        <button type="button" id="newDayBtn" class="chip-btn">🗓️ Novi dan</button>
+      </div>
+    </div>
     <div id="locationsList" class="card-list"></div>
     <button type="button" id="addLocationBtn" class="fab" aria-label="Dodaj pacijenta">+</button>
   </section>
@@ -132,6 +142,11 @@
       <div class="stats-row">
         <span id="settingsResultCount"></span>
         <button type="button" id="resetCenovnikBtn" class="chip-btn">↺ Vrati na fabričke vrednosti</button>
+      </div>
+      <div class="backup-row">
+        <button type="button" id="exportDataBtn" class="chip-btn">⬇️ Izvezi podatke</button>
+        <button type="button" id="importDataBtn" class="chip-btn">⬆️ Uvezi podatke</button>
+        <input type="file" id="importDataInput" accept="application/json" hidden>
       </div>
     </div>
     <div id="settingsList" class="card-list"></div>

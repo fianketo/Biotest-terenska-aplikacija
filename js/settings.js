@@ -2,6 +2,7 @@
 // delete existing ones, reset to factory defaults. Mirrors locations.js's
 // shape (list view + add/edit bottom-sheet CRUD form).
 import { testById, getCenovnikCategories, addTest, updateTest, deleteTest, resetCenovnikToDefaults, on } from './state.js';
+import { buildBackupPayload, applyBackupPayload } from './storage.js';
 import { openBottomSheet, closeBottomSheet, toast, escapeHtml } from './ui.js';
 import { filterTests, renderCardList, populateCategorySelect } from './cenovnik.js';
 
@@ -92,6 +93,9 @@ export function initSettingsView() {
   const listEl = document.getElementById('settingsList');
   const addBtn = document.getElementById('addTestBtn');
   const resetBtn = document.getElementById('resetCenovnikBtn');
+  const exportBtn = document.getElementById('exportDataBtn');
+  const importBtn = document.getElementById('importDataBtn');
+  const importInput = document.getElementById('importDataInput');
 
   populateCategorySelect(categorySelect);
 
@@ -119,6 +123,43 @@ export function initSettingsView() {
     if (!confirmed) return;
     resetCenovnikToDefaults();
     toast('Cenovnik vraćen na fabričke vrednosti');
+  });
+
+  exportBtn.addEventListener('click', () => {
+    const payload = buildBackupPayload();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `biotest-teren-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Podaci izvezeni');
+  });
+
+  importBtn.addEventListener('click', () => importInput.click());
+
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files[0];
+    importInput.value = ''; // allow re-selecting the same file again later
+    if (!file) return;
+
+    const confirmed = window.confirm('Uvoz će zameniti trenutni cenovnik, pacijente, korpu i memoriju sadržajem iz fajla. Nastaviti?');
+    if (!confirmed) return;
+
+    try {
+      const payload = JSON.parse(await file.text());
+      if (!applyBackupPayload(payload)) {
+        toast('Fajl ne izgleda kao ispravan Biotest Teren backup.');
+        return;
+      }
+      toast('Podaci uvezeni — učitavam...');
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      toast('Greška pri čitanju fajla.');
+    }
   });
 
   on('cenovnik:changed', () => {

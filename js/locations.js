@@ -4,9 +4,9 @@
 // picker, manual lat/lng fallback, and a patient-memory picker to reuse a
 // previously entered patient/client). The list re-sorts into the last
 // computed route's visiting order once one exists (see renderList).
-import { locations, setLocations, on } from './state.js';
-import { KEYS, getItem } from './storage.js';
-import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, escapeHtml } from './ui.js';
+import { locations, setLocations, normalizeForSearch, on } from './state.js';
+import { KEYS, getItem, removeItem } from './storage.js';
+import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, debounce, escapeHtml } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
 import { mountPatientPicker, upsertPatientFromLocation } from './patients.js';
 import { createPickerMap } from './map.js';
@@ -29,6 +29,20 @@ function upsertLocation(loc) {
 
 function deleteLocation(id) {
   setLocations(locations.filter((l) => l.id !== id));
+}
+
+/** Removes visited patients from the active list and clears the now-stale computed route, so the list doesn't grow unbounded day after day. Not-yet-visited patients are kept (carried over). */
+function startNewDay() {
+  const visitedCount = locations.filter((l) => l.visited).length;
+  if (!visitedCount) {
+    toast('Nema posećenih pacijenata za uklanjanje.');
+    return;
+  }
+  const confirmed = window.confirm(`Ukloniti ${visitedCount} posećenih pacijenata sa liste i započeti nov dan?`);
+  if (!confirmed) return;
+  setLocations(locations.filter((l) => !l.visited));
+  removeItem(KEYS.lastRoute);
+  toast('Nov dan započet — posećeni pacijenti uklonjeni.');
 }
 
 function locationCardHtml(loc, routePosition) {
@@ -58,12 +72,17 @@ function locationCardHtml(loc, routePosition) {
 }
 
 /** Sorts a copy of `locations` into the last computed route's visiting order (entries not in that route, or if none exists yet, keep their normal order at the end). Deliberately doesn't duplicate Ruta's "route je zastarela" staleness banner here — see plan notes. */
-function orderedLocationsForDisplay() {
+function orderedLocationsForDisplay(query) {
+  const q = normalizeForSearch((query || '').trim());
+  const filtered = q
+    ? locations.filter((l) => normalizeForSearch([l.name, l.address, l.phone].filter(Boolean).join(' ')).includes(q))
+    : locations;
+
   const route = getItem(KEYS.lastRoute, null);
-  if (!route || !route.stopIds || !route.stopIds.length) return locations.map((loc) => ({ loc, position: null }));
+  if (!route || !route.stopIds || !route.stopIds.length) return filtered.map((loc) => ({ loc, position: null }));
 
   const orderIndex = new Map(route.stopIds.map((id, i) => [id, i + 1]));
-  return [...locations]
+  return filtered
     .map((loc, i) => ({ loc, position: orderIndex.get(loc.id) ?? null, originalIndex: i }))
     .sort((a, b) => {
       const ai = a.position ?? Infinity;
@@ -76,6 +95,8 @@ function orderedLocationsForDisplay() {
 function renderList() {
   const listEl = document.getElementById('locationsList');
   const countEl = document.getElementById('locationsCount');
+  const searchInput = document.getElementById('locationsSearchInput');
+  const query = searchInput ? searchInput.value : '';
   countEl.textContent = locations.length ? `${locations.length} pacijenata` : '';
 
   if (!locations.length) {
@@ -83,9 +104,13 @@ function renderList() {
     return;
   }
 
-  listEl.innerHTML = orderedLocationsForDisplay()
-    .map(({ loc, position }) => locationCardHtml(loc, position))
-    .join('');
+  const ordered = orderedLocationsForDisplay(query);
+  if (!ordered.length) {
+    listEl.innerHTML = `<div class="empty-state"><span class="emoji">🔎</span>Nema pacijenata za zadatu pretragu.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = ordered.map(({ loc, position }) => locationCardHtml(loc, position)).join('');
 }
 
 function openLocationForm(existing) {
@@ -332,8 +357,12 @@ function openLocationForm(existing) {
 export function initLokacijeView() {
   const listEl = document.getElementById('locationsList');
   const addBtn = document.getElementById('addLocationBtn');
+  const searchInput = document.getElementById('locationsSearchInput');
+  const newDayBtn = document.getElementById('newDayBtn');
 
   addBtn.addEventListener('click', () => openLocationForm(null));
+  searchInput.addEventListener('input', debounce(renderList, 200));
+  newDayBtn.addEventListener('click', startNewDay);
 
   listEl.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
