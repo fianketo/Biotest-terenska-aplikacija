@@ -193,6 +193,25 @@ export function formatDuration(seconds) {
   return `${h} h ${m ? `${m} min` : ''}`.trim();
 }
 
+export function formatClockTime(minutes) {
+  if (minutes == null || Number.isNaN(minutes)) return '—';
+  const total = ((Math.round(minutes) % 1440) + 1440) % 1440; // wrap into a 0-1439 day, tolerating overnight overflow
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Parses a native <input type="time"> value ("HH:MM") into minutes since midnight, or null. */
+export function parseTimeToMinutes(hhmm) {
+  if (!hhmm) return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (h > 23 || m > 59) return null;
+  return h * 60 + m;
+}
+
 export function debounce(fn, wait = 250) {
   let t = null;
   return (...args) => {

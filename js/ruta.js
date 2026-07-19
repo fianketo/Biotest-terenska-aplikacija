@@ -1,11 +1,12 @@
 // Ruta view controller: ties map.js + route.js + saved locations together —
-// start-point selection, "Optimizuj rutu", itinerary rendering, and
+// start-point selection, appointment-time-aware scheduling (when any stop
+// has a fixed time), "Optimizuj rutu", itinerary rendering, and
 // bta:lastRoute persistence/staleness.
 import { locations, setLocations, on } from './state.js';
 import { KEYS, getItem, setItem } from './storage.js';
-import { toast, formatDistance, formatDuration, escapeHtml } from './ui.js';
+import { toast, formatDistance, formatDuration, formatClockTime, parseTimeToMinutes, escapeHtml } from './ui.js';
 import * as mapMod from './map.js';
-import { computeOptimizedTrip } from './route.js';
+import { computeOptimizedTrip, computeScheduledTrip } from './route.js';
 
 let startMode = 'custom';
 let mapReady = false;
@@ -75,20 +76,35 @@ function renderItinerary(route, startLabel) {
   const rows = [];
 
   if (startLabel) {
+    const departureLine = route.departureMinutes != null ? `<span class="itinerary-leg">🕐 Polazak ${formatClockTime(route.departureMinutes)}</span>` : '';
     rows.push(`
       <div class="card itinerary-card">
         <div class="itinerary-num">🏁</div>
         <div class="itinerary-body">
           <span class="location-name">${escapeHtml(startLabel)}</span>
           <span class="itinerary-leg">Polazna tačka</span>
+          ${departureLine}
         </div>
       </div>`);
   }
+
+  const scheduleMap = new Map((route.schedule || []).map((s) => [s.stopId, s]));
 
   route.stopIds.forEach((id, i) => {
     const loc = locMap.get(id);
     if (!loc) return;
     const leg = route.legs[i];
+    const sched = scheduleMap.get(id);
+    let scheduleLine = '';
+    if (sched) {
+      const arrivalBadge = `<span class="badge-chip">🕐 Dolazak ~${formatClockTime(sched.arrivalMinutes)}</span>`;
+      const appointmentBadge = sched.appointmentMinutes != null
+        ? sched.lateByMinutes > 0
+          ? `<span class="badge-chip late">⚠ ~${sched.lateByMinutes} min kašnjenja (zakazano ${formatClockTime(sched.appointmentMinutes)})</span>`
+          : `<span class="badge-chip">⏰ Zakazano ${formatClockTime(sched.appointmentMinutes)}</span>`
+        : '';
+      scheduleLine = `<div class="badge-row">${arrivalBadge}${appointmentBadge}</div>`;
+    }
     rows.push(`
       <div class="card itinerary-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">
         <div class="itinerary-num">${loc.visited ? '✔' : i + 1}</div>
@@ -96,6 +112,7 @@ function renderItinerary(route, startLabel) {
           <span class="location-name">${escapeHtml(loc.name)}</span>
           <span class="location-address">📍 ${escapeHtml(loc.address)}</span>
           ${leg ? `<span class="itinerary-leg">🚗 ${formatDistance(leg.distanceMeters)} · ${formatDuration(leg.durationSeconds)} od prethodne stanice</span>` : ''}
+          ${scheduleLine}
         </div>
         ${!loc.visited ? `<button type="button" class="chip-btn" data-action="mark-visited" data-id="${loc.id}">✔ Posećeno</button>` : ''}
       </div>`);
@@ -203,15 +220,28 @@ async function handleOptimize(button) {
     return;
   }
 
+  const stopsWithAppointments = stops.filter((s) => s.appointmentTime);
+
   button.disabled = true;
   button.textContent = '⏳ Optimizujem...';
   try {
-    const result = await computeOptimizedTrip(start, stops);
+    let result;
+    let departureMinutes = null;
+    if (stopsWithAppointments.length) {
+      const departureInput = document.getElementById('departureTime');
+      const now = new Date();
+      departureMinutes = parseTimeToMinutes(departureInput.value) ?? now.getHours() * 60 + now.getMinutes();
+      const scheduledStops = stops.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, appointmentMinutes: parseTimeToMinutes(s.appointmentTime) }));
+      result = await computeScheduledTrip({ start, departureMinutes, stops: scheduledStops });
+    } else {
+      result = await computeOptimizedTrip(start, stops);
+    }
     const route = {
       generatedAt: new Date().toISOString(),
       startMode,
       startCoord,
       startLabel,
+      departureMinutes,
       ...result
     };
     setItem(KEYS.lastRoute, route);
@@ -253,6 +283,12 @@ export function initRutaView() {
   const customStatusEl = document.getElementById('customStartStatus');
   const saveCustomStartBtn = document.getElementById('saveCustomStartBtn');
   const editCustomStartBtn = document.getElementById('editCustomStartBtn');
+  const departureInput = document.getElementById('departureTime');
+
+  if (!departureInput.value) {
+    const now = new Date();
+    departureInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
 
   customEditor.hidden = startMode !== 'custom';
   if (startMode === 'custom') renderCustomStartEditor();

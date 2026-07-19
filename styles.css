@@ -254,6 +254,7 @@ input:focus, select:focus, textarea:focus {
 }
 :root[data-theme="dark"] .badge-chip { color: var(--accent); }
 .badge-chip.mono { font-family: ui-monospace, monospace; background: var(--bg-sunken); color: var(--text-muted); }
+.badge-chip.late { background: var(--danger-soft); color: var(--danger); }
 
 .test-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
 

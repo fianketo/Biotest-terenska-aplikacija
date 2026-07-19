@@ -36,7 +36,7 @@ function locationCardHtml(loc) {
   <div class="card location-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">
     <div class="location-top">
       <span class="location-name">${escapeHtml(loc.name)}</span>
-      ${pill}
+      <span class="badge-row">${loc.appointmentTime ? `<span class="badge-chip">⏰ ${escapeHtml(loc.appointmentTime)}</span>` : ''}${pill}</span>
     </div>
     <div class="location-address">📍 ${escapeHtml(loc.address)}</div>
     ${loc.phone ? `<div class="location-phone">📞 <a href="tel:${escapeHtml(loc.phone.replace(/[^0-9+]/g, ''))}">${escapeHtml(loc.phone)}</a></div>` : ''}
@@ -67,7 +67,7 @@ function openLocationForm(existing) {
   const isEdit = !!existing;
   const working = existing
     ? { ...existing, testIds: [...(existing.testIds || [])] }
-    : { id: genId(), name: '', phone: '', address: '', lat: null, lng: null, geocodedAt: null, note: '', testIds: [], visited: false, visitedAt: null };
+    : { id: genId(), name: '', phone: '', address: '', lat: null, lng: null, geocodedAt: null, note: '', appointmentTime: '', testIds: [], visited: false, visitedAt: null };
   const pickerSelection = new Set(working.testIds);
 
   const form = document.createElement('form');
@@ -88,6 +88,10 @@ function openLocationForm(existing) {
         <button type="button" id="geocodeBtn" class="chip-btn">📡 Pronađi na mapi</button>
       </div>
       <div id="geocodeStatus" class="geocode-status"></div>
+    </div>
+    <div class="field">
+      <label for="locAppointmentTime">⏰ Zakazano vreme (opciono)</label>
+      <input type="time" id="locAppointmentTime" value="${escapeHtml(working.appointmentTime || '')}">
     </div>
     <div class="field">
       <label for="locNote">Napomena</label>
@@ -233,6 +237,7 @@ function openLocationForm(existing) {
       name,
       phone: form.querySelector('#locPhone').value.trim(),
       address,
+      appointmentTime: form.querySelector('#locAppointmentTime').value || null,
       note: form.querySelector('#locNote').value.trim(),
       testIds: [...pickerSelection],
       createdAt: working.createdAt || now,
