@@ -380,30 +380,76 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--warning);
 }
 
-.live-track-row {
-  margin: 10px 18px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.live-status {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  background: var(--bg-sunken);
-  border-radius: 30px;
-  padding: 6px 14px;
-}
-
-.map {
-  height: 320px;
+.map-wrap {
+  position: relative;
   margin: 14px 18px;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+.map {
+  height: 320px;
   z-index: 1;
 }
+
+.map-overlay-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 52px;
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.map-overlay-controls .chip-btn {
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+
+.map-expand-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.live-status {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 30;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  border-radius: 30px;
+  padding: 6px 14px;
+}
+
+.map-wrap.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+}
+.map-wrap.expanded .map { height: 100%; }
+.map-wrap.expanded .map-overlay-controls { top: calc(10px + env(safe-area-inset-top, 0px)); }
+.map-wrap.expanded .map-expand-btn { top: calc(10px + env(safe-area-inset-top, 0px)); }
+.map-wrap.expanded .live-status { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 
 .route-summary {
   margin: 0 18px 10px;
@@ -577,6 +623,9 @@ input:focus, select:focus, textarea:focus {
 .coord-row { display: flex; gap: 10px; }
 .coord-row .field { flex: 1; }
 
+.picker-map-hint { font-size: 0.78rem; color: var(--text-muted); margin: 6px 0; }
+.picker-map { height: 280px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+
 .geocode-row { display: flex; gap: 8px; align-items: flex-end; }
 .geocode-row .field { flex: 1; margin-bottom: 0; }
 .geocode-status { font-size: 0.76rem; margin-top: 6px; color: var(--text-muted); }
@@ -615,6 +664,19 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 #toast-root.visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Map pin name labels ---------- */
+.leaflet-tooltip.patient-label {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.leaflet-tooltip.patient-label::before { display: none; }
 
 /* ---------- Live position dot ---------- */
 .live-dot-wrap { position: relative; width: 22px; height: 22px; }

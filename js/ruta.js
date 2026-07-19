@@ -129,7 +129,9 @@ function renderItinerary(route, startLabel) {
 
 function drawRouteOnMap(route) {
   const locMap = locationMap();
+  const routePositions = route && route.stopIds ? new Map(route.stopIds.map((id, i) => [id, i + 1])) : null;
   const bounds = mapMod.renderLocationMarkers(locations, {
+    routePositions,
     onMarkerClick: (id) => {
       const loc = locMap.get(id);
       if (loc) mapMod.flyTo(loc.lat, loc.lng);
@@ -433,6 +435,28 @@ export function initRutaView() {
   liveTrackBtn.addEventListener('click', () => {
     if (watchId != null) stopLiveTracking(liveTrackBtn);
     else startLiveTracking(liveTrackBtn);
+  });
+
+  const centerOnMeBtn = document.getElementById('centerOnMeBtn');
+  centerOnMeBtn.addEventListener('click', async () => {
+    centerOnMeBtn.disabled = true;
+    try {
+      const pos = await mapMod.getCurrentPosition();
+      mapMod.flyTo(pos.lat, pos.lng);
+    } catch {
+      toast('Nije moguće dobiti trenutnu lokaciju — proverite dozvole za lokaciju.');
+    } finally {
+      centerOnMeBtn.disabled = false;
+    }
+  });
+
+  const mapWrap = document.getElementById('mapWrap');
+  const expandMapBtn = document.getElementById('expandMapBtn');
+  expandMapBtn.addEventListener('click', () => {
+    const expanded = mapWrap.classList.toggle('expanded');
+    expandMapBtn.textContent = expanded ? '✕' : '⛶';
+    expandMapBtn.setAttribute('aria-label', expanded ? 'Zatvori pun ekran' : 'Pun ekran');
+    requestAnimationFrame(() => mapMod.invalidateSize());
   });
 
   itineraryList.addEventListener('click', (e) => {

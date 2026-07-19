@@ -11,14 +11,22 @@ let liveMarker = null;
 const DEFAULT_CENTER = [44.7866, 20.4489]; // Belgrade
 const DEFAULT_ZOOM = 12;
 
+// CartoDB Voyager — free, no API key, cleaner/higher-contrast than stock OSM
+// tiles so the colored route pins stand out better, while keeping street
+// labels legible (unlike the more minimal Positron style).
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const TILE_OPTIONS = {
+  maxZoom: 20,
+  subdomains: 'abcd',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> saradnici &copy; <a href="https://carto.com/attributions">CARTO</a>'
+};
+
 export function initMap(containerId) {
   if (map) return map;
   if (!window.L) throw new Error('Leaflet nije učitan (vendor/leaflet/leaflet.js).');
   map = window.L.map(containerId, { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> saradnici'
-  }).addTo(map);
+  window.L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(map);
+  window.L.control.scale({ metric: true, imperial: false }).addTo(map);
   markersLayer = window.L.layerGroup().addTo(map);
   routeLayer = window.L.layerGroup().addTo(map);
   return map;
@@ -28,16 +36,27 @@ export function invalidateSize() {
   if (map) map.invalidateSize();
 }
 
-function pinIcon(color) {
+function pinIcon(color, number) {
+  // The pin div is rotated -45deg for the teardrop shape; the number span
+  // is counter-rotated +45deg so it reads upright inside it.
+  const label = number != null
+    ? `<span style="transform:rotate(45deg);color:#fff;font-weight:700;font-size:12px;">${number}</span>`
+    : '';
   return window.L.divIcon({
     className: 'route-pin',
-    html: `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26]
+    html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">${label}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28]
   });
 }
 
-export function renderLocationMarkers(locations, { onMarkerClick } = {}) {
+/**
+ * `routePositions`: optional Map of location id -> 1-based visiting order
+ * (from the last computed route) — pins for stops in that route show their
+ * number; others fall back to a plain colored pin. Every marker gets a
+ * permanent name tooltip so the map itself is readable without tapping.
+ */
+export function renderLocationMarkers(locations, { onMarkerClick, routePositions } = {}) {
   if (!markersLayer) return;
   markersLayer.clearLayers();
   const bounds = [];
@@ -45,8 +64,15 @@ export function renderLocationMarkers(locations, { onMarkerClick } = {}) {
   for (const loc of locations) {
     if (loc.lat == null || loc.lng == null) continue;
     const color = loc.visited ? '#1a8f5e' : '#c94444';
-    const marker = window.L.marker([loc.lat, loc.lng], { icon: pinIcon(color) })
-      .bindPopup(`<strong>${escapeHtmlLite(loc.name)}</strong><br>${escapeHtmlLite(loc.address)}`);
+    const position = routePositions ? routePositions.get(loc.id) : null;
+    const marker = window.L.marker([loc.lat, loc.lng], { icon: pinIcon(color, position) })
+      .bindPopup(`<strong>${escapeHtmlLite(loc.name)}</strong><br>${escapeHtmlLite(loc.address)}`)
+      .bindTooltip(`${position != null ? `#${position} ` : ''}${escapeHtmlLite(loc.name)}`, {
+        permanent: true,
+        direction: 'right',
+        offset: [10, 0],
+        className: 'patient-label'
+      });
     if (onMarkerClick) marker.on('click', () => onMarkerClick(loc.id));
     marker.addTo(markersLayer);
     bounds.push([loc.lat, loc.lng]);
@@ -159,6 +185,54 @@ export function getCurrentPosition({ timeout = 10000 } = {}) {
       { enableHighAccuracy: true, timeout, maximumAge: 60000 }
     );
   });
+}
+
+/**
+ * Standalone, disposable Leaflet map for picking a lat/lng by tapping —
+ * independent of the module-singleton Ruta map above (used inside the
+ * Lokacije add/edit sheet). Tap or drag the marker to move it; `onChange`
+ * fires with the new {lat,lng}. Caller must call `destroy()` when done
+ * (e.g. on sheet close) to avoid leaking the Leaflet instance.
+ */
+export function createPickerMap(containerId, { lat, lng } = {}) {
+  if (!window.L) throw new Error('Leaflet nije učitan (vendor/leaflet/leaflet.js).');
+  const hasInitial = lat != null && lng != null;
+  const center = hasInitial ? [lat, lng] : DEFAULT_CENTER;
+  const pickerMap = window.L.map(containerId, { zoomControl: true }).setView(center, hasInitial ? 15 : DEFAULT_ZOOM);
+  window.L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(pickerMap);
+  window.L.control.scale({ metric: true, imperial: false }).addTo(pickerMap);
+
+  const listeners = new Set();
+  let marker = hasInitial ? window.L.marker(center, { draggable: true }).addTo(pickerMap) : null;
+
+  function notify(latlng) {
+    listeners.forEach((fn) => fn(latlng.lat, latlng.lng));
+  }
+
+  function placeMarker(latlng) {
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = window.L.marker(latlng, { draggable: true }).addTo(pickerMap);
+      marker.on('dragend', () => notify(marker.getLatLng()));
+    }
+    notify(latlng);
+  }
+
+  if (marker) marker.on('dragend', () => notify(marker.getLatLng()));
+  pickerMap.on('click', (e) => placeMarker(e.latlng));
+
+  return {
+    onChange(fn) {
+      listeners.add(fn);
+    },
+    invalidateSize() {
+      pickerMap.invalidateSize();
+    },
+    destroy() {
+      pickerMap.remove();
+    }
+  };
 }
 
 function escapeHtmlLite(str) {

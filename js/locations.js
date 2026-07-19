@@ -9,6 +9,7 @@ import { KEYS, getItem } from './storage.js';
 import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, escapeHtml } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
 import { mountPatientPicker, upsertPatientFromLocation } from './patients.js';
+import { createPickerMap } from './map.js';
 
 function genId() {
   return `loc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -112,6 +113,7 @@ function openLocationForm(existing) {
         <button type="button" id="geocodeBtn" class="chip-btn">📡 Pronađi na mapi</button>
       </div>
       <div id="geocodeStatus" class="geocode-status"></div>
+      <button type="button" class="advanced-toggle" id="pickOnMapBtn">🗺️ Odaberi na mapi</button>
     </div>
     <div class="field">
       <label for="locAppointmentTime">⏰ Zakazano vreme (opciono)</label>
@@ -188,6 +190,57 @@ function openLocationForm(existing) {
       btn.disabled = false;
       btn.textContent = '📡 Pronađi na mapi';
     }
+  });
+
+  form.querySelector('#pickOnMapBtn').addEventListener('click', () => {
+    const mapContainerId = `locationPickerMap_${Date.now()}`;
+    const pickerContainer = document.createElement('div');
+    pickerContainer.innerHTML = `
+      <div class="picker-map-hint">Dodirnite mapu (ili prevucite pin) da postavite tačnu lokaciju.</div>
+      <div id="${mapContainerId}" class="picker-map"></div>
+    `;
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'primary-btn';
+    confirmBtn.style.width = '100%';
+    confirmBtn.style.marginTop = '12px';
+    confirmBtn.textContent = 'Potvrdi lokaciju';
+    confirmBtn.disabled = true;
+    pickerContainer.appendChild(confirmBtn);
+
+    let picked = null;
+    let pickerHandle = null;
+
+    const closePicker = openBottomSheet(pickerContainer, {
+      title: 'Odaberi lokaciju na mapi',
+      onClose: () => {
+        if (pickerHandle) pickerHandle.destroy();
+      }
+    });
+
+    requestAnimationFrame(() => {
+      pickerHandle = createPickerMap(mapContainerId, working.lat != null ? { lat: working.lat, lng: working.lng } : {});
+      if (working.lat != null) {
+        picked = { lat: working.lat, lng: working.lng };
+        confirmBtn.disabled = false;
+      }
+      pickerHandle.onChange((lat, lng) => {
+        picked = { lat, lng };
+        confirmBtn.disabled = false;
+      });
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      if (!picked) return;
+      working.lat = picked.lat;
+      working.lng = picked.lng;
+      working.geocodedAt = new Date().toISOString();
+      form.querySelector('#locLat').value = picked.lat;
+      form.querySelector('#locLng').value = picked.lng;
+      geocodeStatusEl.textContent = `✔ Postavljeno na mapi (${picked.lat.toFixed(5)}, ${picked.lng.toFixed(5)})`;
+      geocodeStatusEl.className = 'geocode-status ok';
+      closePicker();
+    });
   });
 
   form.querySelector('#openPatientPickerBtn').addEventListener('click', () => {

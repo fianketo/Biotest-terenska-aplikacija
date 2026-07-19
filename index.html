@@ -104,11 +104,15 @@
       <button type="button" id="optimizeRouteBtn" class="primary-btn">🧭 Optimizuj rutu</button>
     </div>
     <div id="routeBanner" class="route-banner" hidden></div>
-    <div class="live-track-row">
-      <button type="button" id="liveTrackBtn" class="chip-btn">📍 Prati uživo</button>
+    <div id="mapWrap" class="map-wrap">
+      <div id="map" class="map"></div>
+      <div class="map-overlay-controls">
+        <button type="button" id="liveTrackBtn" class="chip-btn">📍 Prati uživo</button>
+        <button type="button" id="centerOnMeBtn" class="chip-btn">🎯 Centriraj</button>
+      </div>
+      <button type="button" id="expandMapBtn" class="map-expand-btn" aria-label="Pun ekran">⛶</button>
       <div id="liveStatus" class="live-status" hidden></div>
     </div>
-    <div id="map" class="map"></div>
     <div id="routeSummary" class="route-summary" hidden></div>
     <div id="itineraryList" class="card-list"></div>
   </section>
