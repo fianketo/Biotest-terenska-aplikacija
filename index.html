@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e7c8c">
+<meta name="description" content="Biotest terenska aplikacija — cenovnik analiza, korpa i optimizacija terenske rute">
+<title>Biotest Teren</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="app-bar">
+  <div class="app-bar-title">
+    <span class="app-logo" aria-hidden="true">🧬</span>
+    <div>
+      <h1>Biotest Teren</h1>
+      <p class="app-bar-sub" id="app-bar-sub">Cenovnik analiza</p>
+    </div>
+  </div>
+  <button type="button" id="theme-toggle" class="icon-btn" aria-label="Promeni temu">🌓</button>
+</header>
+
+<main id="main-content">
+
+  <section id="view-cenovnik" class="view" data-view="cenovnik">
+    <div class="search-panel">
+      <div class="field">
+        <label for="searchInput">🔍 Pretraga</label>
+        <input type="text" id="searchInput" placeholder="Naziv, kategorija, uzorak, metoda..." autocomplete="off">
+      </div>
+      <div class="filter-row">
+        <div class="field">
+          <label for="categoryFilter">📂 Kategorija</label>
+          <select id="categoryFilter"><option value="">Sve kategorije</option></select>
+        </div>
+        <div class="field small">
+          <label for="minPrice">Min. RSD</label>
+          <input type="number" id="minPrice" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="field small">
+          <label for="maxPrice">Maks. RSD</label>
+          <input type="number" id="maxPrice" inputmode="numeric" placeholder="∞">
+        </div>
+      </div>
+      <div class="stats-row">
+        <span id="resultCount"></span>
+        <button type="button" id="clearFiltersBtn" class="chip-btn">✖ Resetuj filtere</button>
+      </div>
+    </div>
+    <div id="cenovnikList" class="card-list"></div>
+    <div id="cenovnikSentinel" class="load-sentinel" aria-hidden="true"></div>
+  </section>
+
+  <section id="view-korpa" class="view" data-view="korpa" hidden>
+    <div class="view-header">
+      <h2>🛒 Korpa</h2>
+      <button type="button" id="clearCartBtn" class="chip-btn">Isprazni korpu</button>
+    </div>
+    <div id="cartList" class="card-list"></div>
+    <div class="cart-footer">
+      <span>Ukupno</span>
+      <strong id="cartTotal">0 RSD</strong>
+    </div>
+  </section>
+
+  <section id="view-lokacije" class="view" data-view="lokacije" hidden>
+    <div class="view-header">
+      <h2>📍 Lokacije</h2>
+      <span id="locationsCount" class="muted-count"></span>
+    </div>
+    <div id="locationsList" class="card-list"></div>
+    <button type="button" id="addLocationBtn" class="fab" aria-label="Dodaj lokaciju">+</button>
+  </section>
+
+  <section id="view-ruta" class="view" data-view="ruta" hidden>
+    <div class="route-controls">
+      <div class="segmented" id="startModeSegmented" role="radiogroup" aria-label="Polazna tačka">
+        <button type="button" class="segmented-btn active" data-mode="current">📡 Moja lokacija</button>
+        <button type="button" class="segmented-btn" data-mode="first-location">📍 Prva lokacija</button>
+      </div>
+      <button type="button" id="optimizeRouteBtn" class="primary-btn">🧭 Optimizuj rutu</button>
+    </div>
+    <div id="routeBanner" class="route-banner" hidden></div>
+    <div id="map" class="map"></div>
+    <div id="routeSummary" class="route-summary" hidden></div>
+    <div id="itineraryList" class="card-list"></div>
+  </section>
+
+</main>
+
+<nav class="bottom-nav">
+  <button type="button" class="nav-btn active" data-view="cenovnik">
+    <span class="nav-icon">📋</span><span>Cenovnik</span>
+  </button>
+  <button type="button" class="nav-btn" data-view="korpa">
+    <span class="nav-icon">🛒</span><span>Korpa</span><span id="cartBadge" class="badge" hidden>0</span>
+  </button>
+  <button type="button" class="nav-btn" data-view="lokacije">
+    <span class="nav-icon">📍</span><span>Lokacije</span>
+  </button>
+  <button type="button" class="nav-btn" data-view="ruta">
+    <span class="nav-icon">🧭</span><span>Ruta</span>
+  </button>
+</nav>
+
+<div id="sheet-root" hidden></div>
+<div id="toast-root" role="status" aria-live="polite"></div>
+
+<script src="./vendor/leaflet/leaflet.js"></script>
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
