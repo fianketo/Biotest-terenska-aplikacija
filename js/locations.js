@@ -66,7 +66,7 @@ function locationCardHtml(loc, routePosition) {
       ${canNavigate ? `<a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a>` : ''}
       <button type="button" class="chip-btn" data-action="toggle-visited" data-id="${loc.id}">${loc.visited ? '↺ Vrati na čekanje' : '✔ Označi posećeno'}</button>
       <button type="button" class="chip-btn" data-action="edit-location" data-id="${loc.id}">✎ Uredi</button>
-      <button type="button" class="chip-btn" data-action="delete-location" data-id="${loc.id}">🗑 Obriši</button>
+      <button type="button" class="remove-btn" data-action="delete-location" data-id="${loc.id}">🗑 Obriši</button>
     </div>
   </div>`;
 }
@@ -122,6 +122,7 @@ function openLocationForm(existing) {
 
   const form = document.createElement('form');
   form.innerHTML = `
+    <div class="form-section-title">Osnovni podaci</div>
     <button type="button" class="chip-btn" id="openPatientPickerBtn">👤 Izaberi postojećeg pacijenta</button>
     <div class="field">
       <label for="locName">Naziv / klijent *</label>
@@ -131,6 +132,8 @@ function openLocationForm(existing) {
       <label for="locPhone">Telefon</label>
       <input type="tel" id="locPhone" value="${escapeHtml(working.phone)}" placeholder="npr. 06X/XXX-XXXX">
     </div>
+
+    <div class="form-section-title">Lokacija</div>
     <div class="field">
       <label for="locAddress">Adresa *</label>
       <div class="geocode-row">
@@ -140,6 +143,15 @@ function openLocationForm(existing) {
       <div id="geocodeStatus" class="geocode-status"></div>
       <button type="button" class="advanced-toggle" id="pickOnMapBtn">🗺️ Odaberi na mapi</button>
     </div>
+    <button type="button" class="advanced-toggle" id="toggleAdvanced">▸ Napredne opcije (ručne koordinate)</button>
+    <div id="advancedFields" hidden>
+      <div class="coord-row">
+        <div class="field"><label for="locLat">Geo. širina (lat)</label><input type="number" step="any" id="locLat" value="${working.lat ?? ''}"></div>
+        <div class="field"><label for="locLng">Geo. dužina (lng)</label><input type="number" step="any" id="locLng" value="${working.lng ?? ''}"></div>
+      </div>
+    </div>
+
+    <div class="form-section-title">Termin i napomena</div>
     <div class="field">
       <label for="locAppointmentTime">⏰ Zakazano vreme (opciono)</label>
       <input type="time" id="locAppointmentTime" value="${escapeHtml(working.appointmentTime || '')}">
@@ -148,13 +160,8 @@ function openLocationForm(existing) {
       <label for="locNote">Napomena</label>
       <textarea id="locNote" placeholder="Opciono...">${escapeHtml(working.note)}</textarea>
     </div>
-    <button type="button" class="advanced-toggle" id="toggleAdvanced">▸ Napredne opcije (ručne koordinate)</button>
-    <div id="advancedFields" hidden>
-      <div class="coord-row">
-        <div class="field"><label for="locLat">Geo. širina (lat)</label><input type="number" step="any" id="locLat" value="${working.lat ?? ''}"></div>
-        <div class="field"><label for="locLng">Geo. dužina (lng)</label><input type="number" step="any" id="locLng" value="${working.lng ?? ''}"></div>
-      </div>
-    </div>
+
+    <div class="form-section-title">Analize</div>
     <div class="field">
       <label>Analize za poneti</label>
       <div id="testPickerSummary" class="test-picker-summary">

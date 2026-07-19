@@ -17,7 +17,7 @@
   --danger-soft: #fbe7e7;
   --warning: #b8860b;
   --warning-soft: #fdf3dc;
-  --shadow: 0 8px 24px rgba(20, 40, 55, 0.08);
+  --shadow: 0 4px 16px rgba(20, 40, 55, 0.06);
   --radius-lg: 24px;
   --radius-md: 16px;
   --radius-sm: 10px;
@@ -43,7 +43,7 @@
   --danger-soft: #3a1f22;
   --warning: #e0b74c;
   --warning-soft: #362c14;
-  --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   color-scheme: dark;
 }
 
@@ -65,7 +65,7 @@
     --danger-soft: #3a1f22;
     --warning: #e0b74c;
     --warning-soft: #362c14;
-    --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    --shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
 }
@@ -204,16 +204,18 @@ input:focus, select:focus, textarea:focus {
 }
 
 .chip-btn {
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  padding: 6px 14px;
+  background: var(--primary-soft);
+  border: 1px solid transparent;
+  padding: 7px 16px;
   border-radius: 30px;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--primary-dark);
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.15s;
 }
-.chip-btn:hover { background: var(--primary-soft); }
+:root[data-theme="dark"] .chip-btn { color: var(--accent); }
+.chip-btn:hover { background: var(--border); }
+.chip-btn:active { transform: scale(0.96); }
 
 .primary-btn {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -618,6 +620,19 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
 }
 
+.form-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--primary-dark);
+  margin: 4px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.form-section-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+:root[data-theme="dark"] .form-section-title { color: var(--accent); }
+
 .advanced-toggle {
   font-size: 0.8rem;
   color: var(--primary-dark);
@@ -693,7 +708,7 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   inset: 5px;
   border-radius: 50%;
-  background: #1e88ff;
+  background: var(--accent);
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
@@ -701,7 +716,8 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: rgba(30, 136, 255, 0.35);
+  background: var(--accent);
+  opacity: 0.35;
   animation: live-pulse 1.8s ease-out infinite;
 }
 @keyframes live-pulse {

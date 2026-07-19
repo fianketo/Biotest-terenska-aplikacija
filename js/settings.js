@@ -12,6 +12,7 @@ function openTestForm(existing) {
 
   const form = document.createElement('form');
   form.innerHTML = `
+    <div class="form-section-title">Osnovni podaci</div>
     <div class="field">
       <label for="testCategory">Kategorija *</label>
       <input type="text" id="testCategory" list="categoryOptions" required value="${escapeHtml(working.category)}" placeholder="npr. Biohemija">
@@ -25,24 +26,26 @@ function openTestForm(existing) {
       <label for="testPrice">Cena (RSD) *</label>
       <input type="number" id="testPrice" min="0" step="1" required value="${working.price ?? ''}">
     </div>
+
+    <div class="form-section-title">Detalji (opciono)</div>
     <div class="field">
-      <label for="testPrefix">Prefiks (opciono)</label>
+      <label for="testPrefix">Prefiks</label>
       <input type="text" id="testPrefix" value="${escapeHtml(working.prefix || '')}" placeholder="npr. S">
     </div>
     <div class="field">
-      <label for="testSample">Uzorak (opciono)</label>
+      <label for="testSample">Uzorak</label>
       <input type="text" id="testSample" value="${escapeHtml(working.sample || '')}" placeholder="npr. Serum">
     </div>
     <div class="field">
-      <label for="testMethod">Metoda (opciono)</label>
+      <label for="testMethod">Metoda</label>
       <input type="text" id="testMethod" value="${escapeHtml(working.method || '')}">
     </div>
     <div class="field">
-      <label for="testInstrument">Instrument (opciono)</label>
+      <label for="testInstrument">Instrument</label>
       <input type="text" id="testInstrument" value="${escapeHtml(working.instrument || '')}">
     </div>
     <div class="field">
-      <label for="testTime">Vreme (opciono)</label>
+      <label for="testTime">Vreme</label>
       <input type="text" id="testTime" value="${escapeHtml(working.time || '')}" placeholder="npr. 4h">
     </div>
     <div class="form-actions">

@@ -11,6 +11,12 @@ let liveMarker = null;
 const DEFAULT_CENTER = [44.7866, 20.4489]; // Belgrade
 const DEFAULT_ZOOM = 12;
 
+// Reads the app's design tokens straight from CSS so marker/route colors
+// stay in sync with the theme system instead of duplicating hex values.
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 // CartoDB Voyager — free, no API key, cleaner/higher-contrast than stock OSM
 // tiles so the colored route pins stand out better, while keeping street
 // labels legible (unlike the more minimal Positron style).
@@ -63,7 +69,7 @@ export function renderLocationMarkers(locations, { onMarkerClick, routePositions
 
   for (const loc of locations) {
     if (loc.lat == null || loc.lng == null) continue;
-    const color = loc.visited ? '#1a8f5e' : '#c94444';
+    const color = loc.visited ? cssVar('--success') : cssVar('--danger');
     const position = routePositions ? routePositions.get(loc.id) : null;
     const marker = window.L.marker([loc.lat, loc.lng], { icon: pinIcon(color, position) })
       .bindPopup(`<strong>${escapeHtmlLite(loc.name)}</strong><br>${escapeHtmlLite(loc.address)}`)
@@ -84,7 +90,7 @@ export function renderLocationMarkers(locations, { onMarkerClick, routePositions
 export function showCurrentLocationMarker(lat, lng) {
   if (!map) return;
   if (currentLocationMarker) currentLocationMarker.remove();
-  currentLocationMarker = window.L.marker([lat, lng], { icon: pinIcon('#12b3c4') })
+  currentLocationMarker = window.L.marker([lat, lng], { icon: pinIcon(cssVar('--accent')) })
     .bindPopup('📡 Moja trenutna lokacija')
     .addTo(map);
 }
@@ -99,7 +105,7 @@ export function clearCurrentLocationMarker() {
 function homeIcon() {
   return window.L.divIcon({
     className: 'home-pin',
-    html: `<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid #7c4dff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.35)">🏠</div>`,
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid ${cssVar('--primary-dark')};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.35)">🏠</div>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18]
   });
@@ -152,7 +158,7 @@ export function drawRoute(geometryCoords, { dashed = false } = {}) {
   if (!geometryCoords || !geometryCoords.length) return;
   const latLngs = geometryCoords.map(([lng, lat]) => [lat, lng]);
   window.L.polyline(latLngs, {
-    color: dashed ? '#b8860b' : '#0e7c8c',
+    color: dashed ? cssVar('--warning') : cssVar('--primary'),
     weight: 5,
     opacity: 0.85,
     dashArray: dashed ? '10 8' : null
