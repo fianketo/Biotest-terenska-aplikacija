@@ -5,7 +5,7 @@ import { initNav, initTheme, onViewChange } from './ui.js';
 import { initCenovnikView } from './cenovnik.js';
 import { initCartView, updateCartBadge } from './cart.js';
 import { initLokacijeView } from './locations.js';
-import { initRutaView, onRutaViewShown } from './ruta.js';
+import { initRutaView, onRutaViewShown, onRutaViewHidden } from './ruta.js';
 import { initSettingsView } from './settings.js';
 
 runMigrations();
@@ -22,6 +22,7 @@ initSettingsView();
 // triggers the map's lazy init (renderView fires listeners synchronously).
 onViewChange((name) => {
   if (name === 'ruta') onRutaViewShown();
+  else onRutaViewHidden();
 });
 
 initNav();

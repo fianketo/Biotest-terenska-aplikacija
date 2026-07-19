@@ -6,7 +6,7 @@ const VIEWS = ['cenovnik', 'korpa', 'lokacije', 'ruta', 'podesavanja'];
 const VIEW_SUBTITLES = {
   cenovnik: 'Cenovnik analiza',
   korpa: 'Vaša korpa',
-  lokacije: 'Terenske lokacije',
+  lokacije: 'Lista pacijenata',
   ruta: 'Optimizacija rute',
   podesavanja: 'Upravljanje cenovnikom'
 };
@@ -192,6 +192,11 @@ export function formatDuration(seconds) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h} h ${m ? `${m} min` : ''}`.trim();
+}
+
+/** Google's universal cross-platform maps URL — opens the installed Google/Apple Maps app on mobile with real turn-by-turn navigation, or the web app as a fallback. No OS-sniffing needed. */
+export function buildNavigationUrl(lat, lng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 }
 
 export function formatClockTime(minutes) {

@@ -380,6 +380,21 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--warning);
 }
 
+.live-track-row {
+  margin: 10px 18px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.live-status {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg-sunken);
+  border-radius: 30px;
+  padding: 6px 14px;
+}
+
 .map {
   height: 320px;
   margin: 14px 18px;
@@ -600,6 +615,28 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 #toast-root.visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Live position dot ---------- */
+.live-dot-wrap { position: relative; width: 22px; height: 22px; }
+.live-dot {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #1e88ff;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.live-dot-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(30, 136, 255, 0.35);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
 
 /* ---------- Misc ---------- */
 .leaflet-pane { z-index: 2; }

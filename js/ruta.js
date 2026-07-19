@@ -1,16 +1,22 @@
 // Ruta view controller: ties map.js + route.js + saved locations together —
 // start-point selection, appointment-time-aware scheduling (when any stop
-// has a fixed time), "Optimizuj rutu", itinerary rendering, and
-// bta:lastRoute persistence/staleness.
-import { locations, setLocations, on } from './state.js';
+// has a fixed time), "Optimizuj rutu", itinerary rendering, live GPS
+// position tracking (watchPosition + a "you are here" map dot, next-stop
+// distance via haversine — deliberately not hitting OSRM on every tick),
+// and bta:lastRoute persistence/staleness.
+import { locations, setLocations, on, emit } from './state.js';
 import { KEYS, getItem, setItem } from './storage.js';
-import { toast, formatDistance, formatDuration, formatClockTime, parseTimeToMinutes, escapeHtml } from './ui.js';
+import { toast, formatDistance, formatDuration, formatClockTime, parseTimeToMinutes, buildNavigationUrl, escapeHtml } from './ui.js';
 import * as mapMod from './map.js';
-import { computeOptimizedTrip, computeScheduledTrip } from './route.js';
+import { computeOptimizedTrip, computeScheduledTrip, haversineMeters } from './route.js';
+
+const ARRIVAL_THRESHOLD_METERS = 100;
 
 let startMode = 'custom';
 let mapReady = false;
 let routeStale = false;
+let watchId = null;
+let lastArrivalToastStopId = null;
 
 function eligibleStops() {
   return locations.filter((l) => !l.visited && l.lat != null && l.lng != null);
@@ -113,8 +119,8 @@ function renderItinerary(route, startLabel) {
           <span class="location-address">📍 ${escapeHtml(loc.address)}</span>
           ${leg ? `<span class="itinerary-leg">🚗 ${formatDistance(leg.distanceMeters)} · ${formatDuration(leg.durationSeconds)} od prethodne stanice</span>` : ''}
           ${scheduleLine}
+          ${!loc.visited ? `<div class="location-menu-row"><a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a><button type="button" class="chip-btn" data-action="mark-visited" data-id="${loc.id}">✔ Posećeno</button></div>` : ''}
         </div>
-        ${!loc.visited ? `<button type="button" class="chip-btn" data-action="mark-visited" data-id="${loc.id}">✔ Posećeno</button>` : ''}
       </div>`);
   });
 
@@ -246,6 +252,7 @@ async function handleOptimize(button) {
     };
     setItem(KEYS.lastRoute, route);
     routeStale = false;
+    emit('route:changed');
     renderAll();
     if (missing > 0) {
       toast(`Ruta izračunata. ${missing} lokacija bez koordinata je izostavljeno.`);
@@ -258,6 +265,85 @@ async function handleOptimize(button) {
     button.disabled = false;
     button.textContent = '🧭 Optimizuj rutu';
   }
+}
+
+function nextUnvisitedStop() {
+  const route = getItem(KEYS.lastRoute, null);
+  if (!route || !route.stopIds) return null;
+  const locMap = locationMap();
+  for (const id of route.stopIds) {
+    const loc = locMap.get(id);
+    if (loc && !loc.visited && loc.lat != null && loc.lng != null) return loc;
+  }
+  return null;
+}
+
+function updateLiveStatus(lat, lng) {
+  const statusEl = document.getElementById('liveStatus');
+  const next = nextUnvisitedStop();
+  if (!next) {
+    statusEl.textContent = '🧭 Nema sledeće stanice u ruti.';
+    return;
+  }
+  const distance = haversineMeters({ lat, lng }, { lat: next.lat, lng: next.lng });
+  statusEl.textContent = `🧭 Sledeća: ${next.name} · ${formatDistance(distance)}`;
+  if (distance <= ARRIVAL_THRESHOLD_METERS && lastArrivalToastStopId !== next.id) {
+    lastArrivalToastStopId = next.id;
+    toast(`Stigli ste do: ${next.name}`);
+  }
+}
+
+function startLiveTracking(button) {
+  if (!('geolocation' in navigator)) {
+    toast('Geolokacija nije podržana u ovom pregledaču.');
+    return;
+  }
+  lastArrivalToastStopId = null;
+  const statusEl = document.getElementById('liveStatus');
+  statusEl.hidden = false;
+  statusEl.textContent = '📡 Tražim poziciju...';
+
+  let firstFix = true;
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      mapMod.showLiveMarker(lat, lng);
+      updateLiveStatus(lat, lng);
+      if (firstFix) {
+        // Center once on start so the live dot doesn't keep fighting a manual pan/zoom on every tick.
+        firstFix = false;
+        const next = nextUnvisitedStop();
+        const bounds = [[lat, lng]];
+        if (next) bounds.push([next.lat, next.lng]);
+        mapMod.fitToBounds(bounds);
+      }
+    },
+    () => {
+      toast('Nije moguće dobiti poziciju uživo — proverite dozvole za lokaciju.');
+      stopLiveTracking(button);
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+  );
+  button.textContent = '⏹ Zaustavi praćenje';
+}
+
+function stopLiveTracking(button) {
+  if (watchId != null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  mapMod.clearLiveMarker();
+  const statusEl = document.getElementById('liveStatus');
+  if (statusEl) {
+    statusEl.hidden = true;
+    statusEl.textContent = '';
+  }
+  if (button) button.textContent = '📍 Prati uživo';
+}
+
+/** Force-stops live tracking when the user navigates away from Ruta — a watchPosition left running in the background would otherwise silently drain the battery. */
+export function onRutaViewHidden() {
+  if (watchId != null) stopLiveTracking(document.getElementById('liveTrackBtn'));
 }
 
 export function onRutaViewShown() {
@@ -342,6 +428,12 @@ export function initRutaView() {
   });
 
   optimizeBtn.addEventListener('click', () => handleOptimize(optimizeBtn));
+
+  const liveTrackBtn = document.getElementById('liveTrackBtn');
+  liveTrackBtn.addEventListener('click', () => {
+    if (watchId != null) stopLiveTracking(liveTrackBtn);
+    else startLiveTracking(liveTrackBtn);
+  });
 
   itineraryList.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action="mark-visited"]');

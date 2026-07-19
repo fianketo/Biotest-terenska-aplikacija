@@ -1,8 +1,12 @@
-// Lokacije CRUD: list view + add/edit bottom-sheet form (name, phone,
-// address + geocode, note, test picker, manual lat/lng fallback, and a
-// patient-memory picker to reuse a previously entered patient/client).
+// "Lista pacijenata" (internally still `locations`/Lokacije in code — see
+// plan notes on why the rename is display-text only) CRUD: list view +
+// add/edit bottom-sheet form (name, phone, address + geocode, note, test
+// picker, manual lat/lng fallback, and a patient-memory picker to reuse a
+// previously entered patient/client). The list re-sorts into the last
+// computed route's visiting order once one exists (see renderList).
 import { locations, setLocations, on } from './state.js';
-import { openBottomSheet, closeBottomSheet, toast, escapeHtml } from './ui.js';
+import { KEYS, getItem } from './storage.js';
+import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, escapeHtml } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
 import { mountPatientPicker, upsertPatientFromLocation } from './patients.js';
 
@@ -26,16 +30,17 @@ function deleteLocation(id) {
   setLocations(locations.filter((l) => l.id !== id));
 }
 
-function locationCardHtml(loc) {
+function locationCardHtml(loc, routePosition) {
   let pill = '<span class="status-pill pending">⏳ Na čekanju</span>';
   if (loc.visited) pill = '<span class="status-pill visited">✔ Posećeno</span>';
   else if (loc.lat == null || loc.lng == null) pill = '<span class="status-pill no-coord">⚠ Bez koordinata</span>';
 
   const testCount = (loc.testIds || []).length;
+  const canNavigate = !loc.visited && loc.lat != null && loc.lng != null;
   return `
   <div class="card location-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">
     <div class="location-top">
-      <span class="location-name">${escapeHtml(loc.name)}</span>
+      <span class="location-name">${routePosition != null ? `<span class="badge-chip mono">#${routePosition}</span> ` : ''}${escapeHtml(loc.name)}</span>
       <span class="badge-row">${loc.appointmentTime ? `<span class="badge-chip">⏰ ${escapeHtml(loc.appointmentTime)}</span>` : ''}${pill}</span>
     </div>
     <div class="location-address">📍 ${escapeHtml(loc.address)}</div>
@@ -43,6 +48,7 @@ function locationCardHtml(loc) {
     ${loc.note ? `<div class="location-note">"${escapeHtml(loc.note)}"</div>` : ''}
     ${testCount ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span></div>` : ''}
     <div class="location-menu-row">
+      ${canNavigate ? `<a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a>` : ''}
       <button type="button" class="chip-btn" data-action="toggle-visited" data-id="${loc.id}">${loc.visited ? '↺ Vrati na čekanje' : '✔ Označi posećeno'}</button>
       <button type="button" class="chip-btn" data-action="edit-location" data-id="${loc.id}">✎ Uredi</button>
       <button type="button" class="chip-btn" data-action="delete-location" data-id="${loc.id}">🗑 Obriši</button>
@@ -50,17 +56,35 @@ function locationCardHtml(loc) {
   </div>`;
 }
 
+/** Sorts a copy of `locations` into the last computed route's visiting order (entries not in that route, or if none exists yet, keep their normal order at the end). Deliberately doesn't duplicate Ruta's "route je zastarela" staleness banner here — see plan notes. */
+function orderedLocationsForDisplay() {
+  const route = getItem(KEYS.lastRoute, null);
+  if (!route || !route.stopIds || !route.stopIds.length) return locations.map((loc) => ({ loc, position: null }));
+
+  const orderIndex = new Map(route.stopIds.map((id, i) => [id, i + 1]));
+  return [...locations]
+    .map((loc, i) => ({ loc, position: orderIndex.get(loc.id) ?? null, originalIndex: i }))
+    .sort((a, b) => {
+      const ai = a.position ?? Infinity;
+      const bi = b.position ?? Infinity;
+      if (ai !== bi) return ai - bi;
+      return a.originalIndex - b.originalIndex;
+    });
+}
+
 function renderList() {
   const listEl = document.getElementById('locationsList');
   const countEl = document.getElementById('locationsCount');
-  countEl.textContent = locations.length ? `${locations.length} lokacija` : '';
+  countEl.textContent = locations.length ? `${locations.length} pacijenata` : '';
 
   if (!locations.length) {
-    listEl.innerHTML = `<div class="empty-state"><span class="emoji">📍</span>Još nema dodatih lokacija za teren.<br>Dodirnite <strong>+</strong> da dodate prvu.</div>`;
+    listEl.innerHTML = `<div class="empty-state"><span class="emoji">📍</span>Još nema dodatih pacijenata za teren.<br>Dodirnite <strong>+</strong> da dodate prvog.</div>`;
     return;
   }
 
-  listEl.innerHTML = locations.map(locationCardHtml).join('');
+  listEl.innerHTML = orderedLocationsForDisplay()
+    .map(({ loc, position }) => locationCardHtml(loc, position))
+    .join('');
 }
 
 function openLocationForm(existing) {
@@ -113,7 +137,7 @@ function openLocationForm(existing) {
     </div>
     <div class="form-actions">
       <button type="button" class="secondary-btn" id="cancelFormBtn">Otkaži</button>
-      <button type="submit" class="primary-btn">${isEdit ? 'Sačuvaj izmene' : 'Dodaj lokaciju'}</button>
+      <button type="submit" class="primary-btn">${isEdit ? 'Sačuvaj izmene' : 'Dodaj pacijenta'}</button>
     </div>
   `;
 
@@ -245,11 +269,11 @@ function openLocationForm(existing) {
     };
     upsertLocation(saved);
     upsertPatientFromLocation(saved);
-    toast(isEdit ? 'Lokacija sačuvana' : 'Lokacija dodata');
+    toast(isEdit ? 'Pacijent sačuvan' : 'Pacijent dodat');
     closeBottomSheet();
   });
 
-  openBottomSheet(form, { title: isEdit ? 'Uredi lokaciju' : 'Nova lokacija' });
+  openBottomSheet(form, { title: isEdit ? 'Uredi pacijenta' : 'Novi pacijent' });
 }
 
 export function initLokacijeView() {
@@ -268,13 +292,14 @@ export function initLokacijeView() {
       openLocationForm(loc);
     } else if (btn.dataset.action === 'delete-location') {
       deleteLocation(loc.id);
-      toast('Lokacija obrisana');
+      toast('Pacijent obrisan');
     } else if (btn.dataset.action === 'toggle-visited') {
       upsertLocation({ ...loc, visited: !loc.visited, visitedAt: !loc.visited ? new Date().toISOString() : null });
     }
   });
 
   on('locations:changed', renderList);
+  on('route:changed', renderList);
   renderList();
 }
 

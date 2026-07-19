@@ -70,11 +70,11 @@
 
   <section id="view-lokacije" class="view" data-view="lokacije" hidden>
     <div class="view-header">
-      <h2>📍 Lokacije</h2>
+      <h2>📍 Lista pacijenata</h2>
       <span id="locationsCount" class="muted-count"></span>
     </div>
     <div id="locationsList" class="card-list"></div>
-    <button type="button" id="addLocationBtn" class="fab" aria-label="Dodaj lokaciju">+</button>
+    <button type="button" id="addLocationBtn" class="fab" aria-label="Dodaj pacijenta">+</button>
   </section>
 
   <section id="view-ruta" class="view" data-view="ruta" hidden>
@@ -104,6 +104,10 @@
       <button type="button" id="optimizeRouteBtn" class="primary-btn">🧭 Optimizuj rutu</button>
     </div>
     <div id="routeBanner" class="route-banner" hidden></div>
+    <div class="live-track-row">
+      <button type="button" id="liveTrackBtn" class="chip-btn">📍 Prati uživo</button>
+      <div id="liveStatus" class="live-status" hidden></div>
+    </div>
     <div id="map" class="map"></div>
     <div id="routeSummary" class="route-summary" hidden></div>
     <div id="itineraryList" class="card-list"></div>
@@ -140,7 +144,7 @@
     <span class="nav-icon">🛒</span><span>Korpa</span><span id="cartBadge" class="badge" hidden>0</span>
   </button>
   <button type="button" class="nav-btn" data-view="lokacije">
-    <span class="nav-icon">📍</span><span>Lokacije</span>
+    <span class="nav-icon">📍</span><span>Pacijenti</span>
   </button>
   <button type="button" class="nav-btn" data-view="ruta">
     <span class="nav-icon">🧭</span><span>Ruta</span>

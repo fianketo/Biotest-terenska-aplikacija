@@ -6,6 +6,7 @@ let markersLayer = null;
 let routeLayer = null;
 let currentLocationMarker = null;
 let homeMarker = null;
+let liveMarker = null;
 
 const DEFAULT_CENTER = [44.7866, 20.4489]; // Belgrade
 const DEFAULT_ZOOM = 12;
@@ -90,6 +91,32 @@ export function clearHomeMarker() {
   if (homeMarker) {
     homeMarker.remove();
     homeMarker = null;
+  }
+}
+
+function liveIcon() {
+  return window.L.divIcon({
+    className: 'live-pin',
+    html: `<div class="live-dot-wrap"><div class="live-dot-pulse"></div><div class="live-dot"></div></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+}
+
+/** "You are here" live position marker — repositions the same marker instance in place (no flicker/recreate per GPS tick). */
+export function showLiveMarker(lat, lng) {
+  if (!map) return;
+  if (liveMarker) {
+    liveMarker.setLatLng([lat, lng]);
+  } else {
+    liveMarker = window.L.marker([lat, lng], { icon: liveIcon(), zIndexOffset: 2000 }).addTo(map);
+  }
+}
+
+export function clearLiveMarker() {
+  if (liveMarker) {
+    liveMarker.remove();
+    liveMarker = null;
   }
 }
 
