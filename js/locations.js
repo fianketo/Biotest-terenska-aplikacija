@@ -4,9 +4,9 @@
 // picker, manual lat/lng fallback, and a patient-memory picker to reuse a
 // previously entered patient/client). The list re-sorts into the last
 // computed route's visiting order once one exists (see renderList).
-import { locations, setLocations, normalizeForSearch, on } from './state.js';
+import { locations, setLocations, normalizeForSearch, sumTestPrices, on } from './state.js';
 import { KEYS, getItem, removeItem } from './storage.js';
-import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, debounce, escapeHtml } from './ui.js';
+import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, debounce, escapeHtml, formatPrice } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
 import { mountPatientPicker, upsertPatientFromLocation } from './patients.js';
 import { createPickerMap } from './map.js';
@@ -31,6 +31,16 @@ function deleteLocation(id) {
   setLocations(locations.filter((l) => l.id !== id));
 }
 
+/** Merges (union, not replace) test ids assigned from Korpa into a patient's testIds — keeps whatever they already had tagged from the patient form. Returns the updated location, or null if it no longer exists. */
+export function assignTestIdsToLocation(id, testIds) {
+  const loc = findLocation(id);
+  if (!loc) return null;
+  const merged = new Set([...(loc.testIds || []), ...testIds]);
+  const updated = { ...loc, testIds: [...merged], updatedAt: new Date().toISOString() };
+  upsertLocation(updated);
+  return updated;
+}
+
 /** Removes visited patients from the active list and clears the now-stale computed route, so the list doesn't grow unbounded day after day. Not-yet-visited patients are kept (carried over). */
 function startNewDay() {
   const visitedCount = locations.filter((l) => l.visited).length;
@@ -51,6 +61,7 @@ function locationCardHtml(loc, routePosition) {
   else if (loc.lat == null || loc.lng == null) pill = '<span class="status-pill no-coord">⚠ Bez koordinata</span>';
 
   const testCount = (loc.testIds || []).length;
+  const testTotal = sumTestPrices(loc.testIds);
   const canNavigate = !loc.visited && loc.lat != null && loc.lng != null;
   return `
   <div class="card location-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">
@@ -61,7 +72,7 @@ function locationCardHtml(loc, routePosition) {
     <div class="location-address">📍 ${escapeHtml(loc.address)}</div>
     ${loc.phone ? `<div class="location-phone">📞 <a href="tel:${escapeHtml(loc.phone.replace(/[^0-9+]/g, ''))}">${escapeHtml(loc.phone)}</a></div>` : ''}
     ${loc.note ? `<div class="location-note">"${escapeHtml(loc.note)}"</div>` : ''}
-    ${testCount ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span></div>` : ''}
+    ${testCount ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span><span class="badge-chip mono">${formatPrice(testTotal)}</span></div>` : ''}
     <div class="location-menu-row">
       ${canNavigate ? `<a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a>` : ''}
       <button type="button" class="chip-btn" data-action="toggle-visited" data-id="${loc.id}">${loc.visited ? '↺ Vrati na čekanje' : '✔ Označi posećeno'}</button>

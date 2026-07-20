@@ -62,6 +62,13 @@
       <button type="button" id="clearCartBtn" class="chip-btn">Isprazni korpu</button>
     </div>
     <div id="cartList" class="card-list"></div>
+    <div id="cartAssignRow" class="cart-assign-row" hidden>
+      <div class="field">
+        <label for="cartPatientSelect">Dodeli pacijentu</label>
+        <select id="cartPatientSelect"></select>
+      </div>
+      <button type="button" id="assignCartToPatientBtn" class="chip-btn" disabled>Dodeli</button>
+    </div>
     <div class="cart-footer">
       <span>Ukupno</span>
       <strong id="cartTotal">0 RSD</strong>

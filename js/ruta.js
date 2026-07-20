@@ -4,9 +4,9 @@
 // position tracking (watchPosition + a "you are here" map dot, next-stop
 // distance via haversine — deliberately not hitting OSRM on every tick),
 // and bta:lastRoute persistence/staleness.
-import { locations, setLocations, on, emit } from './state.js';
+import { locations, setLocations, sumTestPrices, on, emit } from './state.js';
 import { KEYS, getItem, setItem } from './storage.js';
-import { toast, formatDistance, formatDuration, formatClockTime, parseTimeToMinutes, buildNavigationUrl, escapeHtml } from './ui.js';
+import { toast, formatDistance, formatDuration, formatClockTime, formatPrice, parseTimeToMinutes, buildNavigationUrl, escapeHtml } from './ui.js';
 import * as mapMod from './map.js';
 import { computeOptimizedTrip, computeScheduledTrip, haversineMeters } from './route.js';
 
@@ -111,6 +111,10 @@ function renderItinerary(route, startLabel) {
         : '';
       scheduleLine = `<div class="badge-row">${arrivalBadge}${appointmentBadge}</div>`;
     }
+    const testCount = (loc.testIds || []).length;
+    const testsLine = testCount
+      ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span><span class="badge-chip mono">${formatPrice(sumTestPrices(loc.testIds))}</span></div>`
+      : '';
     rows.push(`
       <div class="card itinerary-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">
         <div class="itinerary-num">${loc.visited ? '✔' : i + 1}</div>
@@ -119,6 +123,7 @@ function renderItinerary(route, startLabel) {
           <span class="location-address">📍 ${escapeHtml(loc.address)}</span>
           ${leg ? `<span class="itinerary-leg">🚗 ${formatDistance(leg.distanceMeters)} · ${formatDuration(leg.durationSeconds)} od prethodne stanice</span>` : ''}
           ${scheduleLine}
+          ${testsLine}
           ${!loc.visited ? `<div class="location-menu-row"><a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a><button type="button" class="chip-btn" data-action="mark-visited" data-id="${loc.id}">✔ Posećeno</button></div>` : ''}
         </div>
       </div>`);

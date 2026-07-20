@@ -163,6 +163,15 @@ export function resetCenovnikToDefaults() {
   persistCenovnik();
 }
 
+export function sumTestPrices(ids) {
+  let total = 0;
+  for (const id of ids || []) {
+    const t = testById.get(id);
+    if (t) total += t.price;
+  }
+  return total;
+}
+
 export function normalizeForSearch(str) {
   return (str || '')
     .normalize('NFD')

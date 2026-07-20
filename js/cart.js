@@ -1,7 +1,8 @@
 // Cart CRUD, total, nav badge. Reuses cenovnik.js's card-list renderer in 'cart' mode.
-import { cart, persistCart, testById, on } from './state.js';
+import { cart, persistCart, testById, locations, sumTestPrices, on } from './state.js';
 import { renderCardList } from './cenovnik.js';
-import { formatPrice, toast } from './ui.js';
+import { assignTestIdsToLocation } from './locations.js';
+import { formatPrice, toast, escapeHtml } from './ui.js';
 
 export function toggleCartItem(id) {
   if (cart.has(id)) {
@@ -22,12 +23,7 @@ export function clearCart() {
 }
 
 export function getCartTotal() {
-  let total = 0;
-  for (const id of cart) {
-    const t = testById.get(id);
-    if (t) total += t.price;
-  }
-  return total;
+  return sumTestPrices(cart);
 }
 
 export function updateCartBadge() {
@@ -42,6 +38,25 @@ export function initCartView() {
   const listEl = document.getElementById('cartList');
   const totalEl = document.getElementById('cartTotal');
   const clearBtn = document.getElementById('clearCartBtn');
+  const assignRow = document.getElementById('cartAssignRow');
+  const patientSelect = document.getElementById('cartPatientSelect');
+  const assignBtn = document.getElementById('assignCartToPatientBtn');
+
+  function renderPatientOptions() {
+    const assignable = locations.filter((l) => !l.visited);
+    const previousValue = patientSelect.value;
+    if (!assignable.length) {
+      patientSelect.innerHTML = '<option value="">Nema pacijenata za teren</option>';
+      patientSelect.disabled = true;
+    } else {
+      patientSelect.disabled = false;
+      patientSelect.innerHTML = `<option value="">Izaberi pacijenta...</option>${assignable
+        .map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`)
+        .join('')}`;
+      if (assignable.some((l) => l.id === previousValue)) patientSelect.value = previousValue;
+    }
+    assignBtn.disabled = !cart.size || !patientSelect.value;
+  }
 
   function render() {
     const items = [...cart].map((id) => testById.get(id)).filter(Boolean);
@@ -54,6 +69,8 @@ export function initCartView() {
     });
     totalEl.textContent = formatPrice(getCartTotal());
     updateCartBadge();
+    assignRow.hidden = !cart.size;
+    renderPatientOptions();
   }
 
   clearBtn.addEventListener('click', () => {
@@ -62,7 +79,24 @@ export function initCartView() {
     toast('Korpa je ispražnjena');
   });
 
+  patientSelect.addEventListener('change', () => {
+    assignBtn.disabled = !cart.size || !patientSelect.value;
+  });
+
+  assignBtn.addEventListener('click', () => {
+    const locationId = patientSelect.value;
+    if (!locationId || !cart.size) return;
+    const updated = assignTestIdsToLocation(locationId, [...cart]);
+    if (!updated) {
+      toast('Pacijent više ne postoji — osvežite listu.');
+      return;
+    }
+    clearCart();
+    toast(`Analize dodeljene pacijentu: ${updated.name}`);
+  });
+
   on('cart:changed', render);
   on('cenovnik:changed', render); // price edits/deletions in Settings should reflect in the cart total immediately
+  on('locations:changed', renderPatientOptions);
   render();
 }
