@@ -135,31 +135,68 @@ export async function computeOptimizedTrip(start, stops) {
 }
 
 /**
- * Builds a stop order where appointment-time stops act as fixed anchors
- * (sorted ascending, order never altered) and every flexible (no
- * appointment) stop is inserted at whichever gap — including before the
- * first anchor or after the last — adds the least straight-line distance
- * (cheapest-insertion construction). This is a feasibility-*reporting*
- * heuristic, not a constraint solver: it always returns one valid full
- * ordering; computeScheduledTrip below then reports honestly wherever
- * that ordering can't actually make an appointment on time.
+ * Estimates the schedule for a candidate stop sequence using straight-line
+ * driving-time estimates (the real OSRM legs aren't known yet at ordering
+ * time — that call happens once, after the order is fixed) plus
+ * SERVICE_DURATION_MINUTES spent working at every stop, anchored or not.
+ * Returns total lateness (minutes over every appointment combined) and the
+ * finishing time, the two numbers the insertion heuristic below optimizes
+ * for. Skipping the per-stop service time here was the bug: a purely
+ * distance-based insertion had no idea that visiting even a couple of
+ * "quick" nearby flexible stops first could burn 20-30+ minutes and blow
+ * a later appointment — so it habitually front-loaded geographically
+ * convenient stops ahead of a time-critical one.
  */
-function buildTimeAnchoredOrder(start, stops) {
+function simulateScheduleMinutes(start, sequence, departureMinutes) {
+  let currentTime = departureMinutes;
+  let prev = start;
+  let totalLateness = 0;
+  for (const stop of sequence) {
+    const driveMinutes = estimateDuration(haversineMeters(prev, stop)) / 60;
+    const arrival = currentTime + driveMinutes;
+    let departure;
+    if (stop.appointmentMinutes != null) {
+      if (arrival > stop.appointmentMinutes) totalLateness += arrival - stop.appointmentMinutes;
+      departure = Math.max(arrival, stop.appointmentMinutes) + SERVICE_DURATION_MINUTES;
+    } else {
+      departure = arrival + SERVICE_DURATION_MINUTES;
+    }
+    currentTime = departure;
+    prev = stop;
+  }
+  return { totalLateness, endTime: currentTime };
+}
+
+/**
+ * Builds a stop order where appointment-time stops act as fixed anchors
+ * (sorted ascending relative to each other — never reordered against one
+ * another) and every flexible (no appointment) stop is inserted at
+ * whichever gap — including before the first anchor or after the last —
+ * a full time simulation (driving estimate + SERVICE_DURATION_MINUTES per
+ * stop, see simulateScheduleMinutes) says is best: first minimizing total
+ * lateness across every appointment, then (as a tie-breaker among equally
+ * feasible options) minimizing the finishing time. This is a feasibility-
+ * *reporting* heuristic, not a full constraint solver — with a fixed
+ * relative order of anchors it always returns one valid full ordering;
+ * computeScheduledTrip below then re-simulates with real OSRM driving
+ * times and reports honestly wherever that ordering still can't make an
+ * appointment on time.
+ */
+function buildTimeAnchoredOrder(start, stops, departureMinutes) {
   const anchored = stops.filter((s) => s.appointmentMinutes != null).sort((a, b) => a.appointmentMinutes - b.appointmentMinutes);
   const flexible = stops.filter((s) => s.appointmentMinutes == null);
 
-  const sequence = [...anchored];
+  let sequence = [...anchored];
   for (const stop of flexible) {
     let bestIndex = 0;
-    let bestExtraCost = Infinity;
+    let bestLateness = Infinity;
+    let bestEndTime = Infinity;
     for (let i = 0; i <= sequence.length; i++) {
-      const prev = i === 0 ? start : sequence[i - 1];
-      const next = i === sequence.length ? null : sequence[i];
-      const costWithout = next ? haversineMeters(prev, next) : 0;
-      const costWith = haversineMeters(prev, stop) + (next ? haversineMeters(stop, next) : 0);
-      const extra = costWith - costWithout;
-      if (extra < bestExtraCost) {
-        bestExtraCost = extra;
+      const candidate = [...sequence.slice(0, i), stop, ...sequence.slice(i)];
+      const { totalLateness, endTime } = simulateScheduleMinutes(start, candidate, departureMinutes);
+      if (totalLateness < bestLateness || (totalLateness === bestLateness && endTime < bestEndTime)) {
+        bestLateness = totalLateness;
+        bestEndTime = endTime;
         bestIndex = i;
       }
     }
@@ -236,7 +273,7 @@ function buildStraightLineLegs(orderedPoints) {
 export async function computeScheduledTrip({ start, departureMinutes, stops }) {
   if (!stops.length) return null;
 
-  const orderedStops = buildTimeAnchoredOrder(start, stops);
+  const orderedStops = buildTimeAnchoredOrder(start, stops, departureMinutes);
   const orderedPoints = [start, ...orderedStops];
 
   let legInfo;
