@@ -327,6 +327,14 @@ input:focus, select:focus, textarea:focus {
 .location-phone a { color: var(--primary-dark); font-weight: 600; text-decoration: none; }
 :root[data-theme="dark"] .location-phone a { color: var(--accent); }
 .location-note { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
+.assigned-tests-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.assigned-tests-list li { list-style: disc; }
 .location-menu-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .status-pill { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 30px; white-space: nowrap; }
 .status-pill.pending { background: var(--warning-soft); color: var(--warning); }

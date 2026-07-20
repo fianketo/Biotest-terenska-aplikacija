@@ -4,7 +4,7 @@
 // position tracking (watchPosition + a "you are here" map dot, next-stop
 // distance via haversine — deliberately not hitting OSRM on every tick),
 // and bta:lastRoute persistence/staleness.
-import { locations, setLocations, sumTestPrices, on, emit } from './state.js';
+import { locations, setLocations, sumTestPrices, resolveTests, on, emit } from './state.js';
 import { KEYS, getItem, setItem } from './storage.js';
 import { toast, formatDistance, formatDuration, formatClockTime, formatPrice, parseTimeToMinutes, buildNavigationUrl, escapeHtml } from './ui.js';
 import * as mapMod from './map.js';
@@ -111,9 +111,12 @@ function renderItinerary(route, startLabel) {
         : '';
       scheduleLine = `<div class="badge-row">${arrivalBadge}${appointmentBadge}</div>`;
     }
-    const testCount = (loc.testIds || []).length;
-    const testsLine = testCount
-      ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span><span class="badge-chip mono">${formatPrice(sumTestPrices(loc.testIds))}</span></div>`
+    const assignedTests = resolveTests(loc.testIds);
+    const testsLine = assignedTests.length
+      ? `<div class="assigned-tests">
+          <div class="badge-row"><span class="badge-chip">${assignedTests.length} analiza za poneti</span><span class="badge-chip mono">${formatPrice(sumTestPrices(loc.testIds))}</span></div>
+          <ul class="assigned-tests-list">${assignedTests.map((t) => `<li>${escapeHtml(t.name)}</li>`).join('')}</ul>
+        </div>`
       : '';
     rows.push(`
       <div class="card itinerary-card ${loc.visited ? 'visited' : ''}" data-id="${loc.id}">

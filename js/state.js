@@ -172,6 +172,10 @@ export function sumTestPrices(ids) {
   return total;
 }
 
+export function resolveTests(ids) {
+  return (ids || []).map((id) => testById.get(id)).filter(Boolean);
+}
+
 export function normalizeForSearch(str) {
   return (str || '')
     .normalize('NFD')

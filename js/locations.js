@@ -4,7 +4,7 @@
 // picker, manual lat/lng fallback, and a patient-memory picker to reuse a
 // previously entered patient/client). The list re-sorts into the last
 // computed route's visiting order once one exists (see renderList).
-import { locations, setLocations, normalizeForSearch, sumTestPrices, on } from './state.js';
+import { locations, setLocations, normalizeForSearch, sumTestPrices, resolveTests, on } from './state.js';
 import { KEYS, getItem, removeItem } from './storage.js';
 import { openBottomSheet, closeBottomSheet, toast, buildNavigationUrl, debounce, escapeHtml, formatPrice } from './ui.js';
 import { mountTestPicker } from './cenovnik.js';
@@ -60,7 +60,7 @@ function locationCardHtml(loc, routePosition) {
   if (loc.visited) pill = '<span class="status-pill visited">✔ Posećeno</span>';
   else if (loc.lat == null || loc.lng == null) pill = '<span class="status-pill no-coord">⚠ Bez koordinata</span>';
 
-  const testCount = (loc.testIds || []).length;
+  const assignedTests = resolveTests(loc.testIds);
   const testTotal = sumTestPrices(loc.testIds);
   const canNavigate = !loc.visited && loc.lat != null && loc.lng != null;
   return `
@@ -72,7 +72,11 @@ function locationCardHtml(loc, routePosition) {
     <div class="location-address">📍 ${escapeHtml(loc.address)}</div>
     ${loc.phone ? `<div class="location-phone">📞 <a href="tel:${escapeHtml(loc.phone.replace(/[^0-9+]/g, ''))}">${escapeHtml(loc.phone)}</a></div>` : ''}
     ${loc.note ? `<div class="location-note">"${escapeHtml(loc.note)}"</div>` : ''}
-    ${testCount ? `<div class="badge-row"><span class="badge-chip">${testCount} analiza za poneti</span><span class="badge-chip mono">${formatPrice(testTotal)}</span></div>` : ''}
+    ${assignedTests.length ? `
+    <div class="assigned-tests">
+      <div class="badge-row"><span class="badge-chip">${assignedTests.length} analiza za poneti</span><span class="badge-chip mono">${formatPrice(testTotal)}</span></div>
+      <ul class="assigned-tests-list">${assignedTests.map((t) => `<li>${escapeHtml(t.name)}</li>`).join('')}</ul>
+    </div>` : ''}
     <div class="location-menu-row">
       ${canNavigate ? `<a class="chip-btn" href="${buildNavigationUrl(loc.lat, loc.lng)}" target="_blank" rel="noopener">🧭 Navigiraj</a>` : ''}
       <button type="button" class="chip-btn" data-action="toggle-visited" data-id="${loc.id}">${loc.visited ? '↺ Vrati na čekanje' : '✔ Označi posećeno'}</button>
